@@ -3,7 +3,7 @@ import wandb
 import hydra
 from tqdm import tqdm
 
-# Coucou test Louis
+# chic à la jone
 
 
 from utils.sanity import show_images
