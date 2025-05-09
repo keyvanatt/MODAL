@@ -7,13 +7,15 @@ defaults:
 
 epochs: 20
 log: True
-prefix: ""
+prefix: "ATT&DAR_"
 experiment_name: ${prefix}${model.name}_${now:%Y-%m-%d_%H-%M-%S}
 
 hydra:
   output_subdir: null
   run:
     dir: .
+
+# Les trucs entre ${} font référence aux fichiers plus hauts dans l'arborescence
 
 datamodule:
   _target_: data.datamodule.DataModule
@@ -23,10 +25,8 @@ datamodule:
   batch_size: ${dataset.batch_size}
   num_workers: ${dataset.num_workers}
   metadata: ${dataset.metadata}
+  taille_val: 0.2
 
 data_dir: ${root_dir}/dataset/
 root_dir:  ${hydra:runtime.cwd}
 checkpoint_path: ${root_dir}/checkpoints/${experiment_name}.pt
-
-
-

@@ -19,7 +19,7 @@ class Dataset(torch.utils.data.Dataset):
         self.ids = info["id"].values
         # - text
         self.text = info["meta"].values
-
+        
         # - transforms
         self.transforms = transforms
 
