@@ -4,6 +4,7 @@ import hydra
 import csv
 from tqdm import tqdm
 
+ #vive louis
 
 @hydra.main(config_path="configs", config_name="train")
 def main (cfg):
