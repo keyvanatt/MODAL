@@ -23,7 +23,7 @@ class DataModule:
         self.metadata = metadata
         self.taille_val = taille_val
         
-        full_dataset = Dataset(
+        self.full_dataset = Dataset(
             self.dataset_path,
             "train_val",
             transforms=self.test_transform,  
@@ -31,15 +31,21 @@ class DataModule:
         )
 
         # Le self.taillee_val est accessible dans le train.yaml. A modifier en fonction des besoins/envies
-        val_size = int(self.taille_val * len(full_dataset))
-        train_size = len(full_dataset) - val_size
+        val_size = int(self.taille_val * len(self.full_dataset))
+        train_size = len(self.full_dataset) - val_size
         # random split va couper de façon aléatoire le dataset en sous-dataset disjoints 
         # de taille train_size puis val_size. L'idée c'est de prendre aléatoirement des éléments
         # du train data pour en faire dataset de validation.
         # On n'a pas besoin de récupérer le "dataset d'entrainement" généré par rendom split d'où le _ 
-        self.train_set, self.val_set = random_split(full_dataset, [train_size, val_size])
+        self.train_set, self.val_set = random_split(self.full_dataset, [train_size, val_size])
        
-        
+    def train_val_dataloader(self):
+        return DataLoader(
+            self.full_dataset,
+            batch_size=self.batch_size,
+            shuffle=True,
+            num_workers=self.num_workers,
+        ) 
 
     def train_dataloader(self):
         """Train dataloader."""
