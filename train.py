@@ -124,9 +124,7 @@ def train(cfg, train_idx=None, val_idx=None):
             if logger is not None
             else None
         )
-        model.accuracy = val_metrics["val/accuracy"]
-        model.loss = val_metrics["val/loss_epoch"]
-
+        model.loss = epoch_val_loss
     print(
         f"""Epoch {epoch}: 
         Training metrics:

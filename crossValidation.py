@@ -46,16 +46,13 @@ def cross_validation(cfg):
         model = train(cfg,train_idx, val_idx)
         
         val_loss = model.loss
-        accuracy = model.accuracy
         
-        print(f"Fold {fold + 1} - Validation Loss: {val_loss:.4f}, Accuracy: {accuracy:.4f}")
+        print(f"Fold {fold + 1} - Validation Loss: {val_loss:.4f}")
         
 
         avg_val_loss += val_loss
-        avg_accuracy += accuracy
     avg_val_loss /= cfg.n_splits
-    avg_accuracy /= cfg.n_splits
-    print(f"Average Validation Loss: {avg_val_loss:.4f}, Average Accuracy: {avg_accuracy:.4f}")
+    print(f"Average Validation Loss: {avg_val_loss:.4f}")
     
     
     return avg_val_loss, avg_accuracy
