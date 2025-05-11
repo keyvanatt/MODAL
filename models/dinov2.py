@@ -15,6 +15,8 @@ class DinoV2Finetune(nn.Module):
             nn.Linear(self.backbone.norm.normalized_shape[0], 1),
             nn.ReLU(),
         )
+        self.accuracy = None
+        self.loss = None
 
     def forward(self, x):
         x = self.backbone(x["image"])

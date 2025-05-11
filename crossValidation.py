@@ -18,11 +18,6 @@ def cross_validation(cfg):
         pas à renseigner lors de l'appel de la fonction.
     """
 
-    logger = (
-        wandb.init(project="challenge_CSC_43M04_EP", name=cfg.experiment_name)
-        if cfg.log
-        else None
-    )
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     # On crée le modèle défini dans train.yaml sur hydra et le to(device) le balance 
     # sur le cpu s'il existe
@@ -50,37 +45,18 @@ def cross_validation(cfg):
         print(f"Fold {fold + 1}/{cfg.n_splits}")
         model = train(cfg,train_idx, val_idx)
         
-        # Compute metrics on the validation set
-        model.eval()
-        val_loss = 0.0
-        correct = 0
-        total = 0
-        val_loader = datamodule.val_dataloader()
-        with torch.no_grad():
-            for inputs, targets in val_loader:
-                inputs, targets = inputs.to(device), targets.to(device)
-                outputs = model(inputs)
-                loss = loss_fn(outputs, targets)
-                val_loss += loss.item()
-                _, predicted = torch.max(outputs, 1)
-                total += targets.size(0)
-                correct += (predicted == targets).sum().item()
-        
-        val_loss /= len(val_loader)
-        accuracy = correct / total
+        val_loss = model.loss
+        accuracy = model.accuracy
         
         print(f"Fold {fold + 1} - Validation Loss: {val_loss:.4f}, Accuracy: {accuracy:.4f}")
         
-        if logger is not None:
-            logger.log({f"fold_{fold + 1}/val_loss": val_loss, f"fold_{fold + 1}/accuracy": accuracy})
 
         avg_val_loss += val_loss
         avg_accuracy += accuracy
     avg_val_loss /= cfg.n_splits
     avg_accuracy /= cfg.n_splits
     print(f"Average Validation Loss: {avg_val_loss:.4f}, Average Accuracy: {avg_accuracy:.4f}")
-    if logger is not None:
-        logger.log({"avg_val_loss": avg_val_loss, "avg_accuracy": avg_accuracy})
+    
     
     return avg_val_loss, avg_accuracy
 if __name__ == "__main__":
