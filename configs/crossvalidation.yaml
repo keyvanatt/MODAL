@@ -1,0 +1,42 @@
+defaults:
+    - _self_
+    - dataset: default
+    - optim: adamw
+    - model: dinov2
+    - loss_fn: msle
+
+seed : 42
+n_splits: 5
+shuffle: True
+stratified: False
+
+
+epochs: 1
+log: True
+prefix: "ATT&DAR_CROSSVAL_"
+experiment_name: ${prefix}${model.name}_${now:%Y-%m-%d_%H-%M-%S}
+
+hydra:
+  output_subdir: null
+  run:
+    dir: .
+
+# Les trucs entre ${} font référence aux fichiers plus hauts dans l'arborescence
+
+
+
+datamodule:
+  _target_: data.datamodule.DataModule
+  dataset_path: ${data_dir}
+  train_transform: ${dataset.train_transform}
+  test_transform: ${dataset.val_transform}
+  batch_size: ${dataset.batch_size}
+  num_workers: ${dataset.num_workers}
+  metadata: ${dataset.metadata}
+  taille_val: 0.2
+  train_idx : None
+  val_idx : None
+
+data_dir: ${root_dir}/dataset/
+root_dir:  ${hydra:runtime.cwd}
+checkpoint_path: ${root_dir}/checkpoints/${experiment_name}.pt

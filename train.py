@@ -16,7 +16,7 @@ def main (cfg):
 
 
 
-def train(cfg):
+def train(cfg, train_idx=None, val_idx=None):
     """
         Fonction globale qui entraîne le réseau. Les paramètres à fixer pour le modèle sont dans le 
         fichier config/train.yaml. 
@@ -38,7 +38,7 @@ def train(cfg):
     optimizer = hydra.utils.instantiate(cfg.optim, params=model.parameters())
     loss_fn = hydra.utils.instantiate(cfg.loss_fn)
     # Idem et le datamodule permet globalement de charger les images et les fournir au modèle
-    datamodule = hydra.utils.instantiate(cfg.datamodule)
+    datamodule = hydra.utils.instantiate(cfg.datamodule, train_idx=train_idx, val_idx=val_idx)
     train_loader = datamodule.train_dataloader()
     val_loader = datamodule.val_dataloader()
     # Envoie le sanity check a wandb pour le training set

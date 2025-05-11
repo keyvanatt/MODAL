@@ -2,7 +2,7 @@ from torch.utils.data import DataLoader
 
 from data.dataset import Dataset
 
-from torch.utils.data import random_split
+from torch.utils.data import random_split,Subset
 
 class DataModule:
     def __init__(
@@ -14,6 +14,8 @@ class DataModule:
         num_workers,
         taille_val,
         metadata=["views"],
+        train_idx=None,
+        val_idx=None,
     ):
         self.dataset_path = dataset_path
         self.train_transform = train_transform  
@@ -22,6 +24,8 @@ class DataModule:
         self.num_workers = num_workers
         self.metadata = metadata
         self.taille_val = taille_val
+        self.train_idx = train_idx
+        self.val_idx = val_idx
         
         self.full_dataset = Dataset(
             self.dataset_path,
@@ -30,14 +34,23 @@ class DataModule:
             metadata=self.metadata,
         )
 
-        # Le self.taillee_val est accessible dans le train.yaml. A modifier en fonction des besoins/envies
-        val_size = int(self.taille_val * len(self.full_dataset))
-        train_size = len(self.full_dataset) - val_size
-        # random split va couper de façon aléatoire le dataset en sous-dataset disjoints 
-        # de taille train_size puis val_size. L'idée c'est de prendre aléatoirement des éléments
-        # du train data pour en faire dataset de validation.
-        # On n'a pas besoin de récupérer le "dataset d'entrainement" généré par rendom split d'où le _ 
-        self.train_set, self.val_set = random_split(self.full_dataset, [train_size, val_size])
+        if self.train_idx is not None and self.val_idx is not None:
+            print("Utilisation des indices fournis pour créer les ensembles d'entraînement et de validation.")
+            # On utilise les indices fournis pour créer les ensembles d'entraînement et de validation
+            self.train_set = Subset(self.full_dataset, self.train_idx)
+            self.val_set = Subset(self.full_dataset, self.val_idx)
+        else:
+
+            # Le self.taillee_val est accessible dans le train.yaml. A modifier en fonction des besoins/envies
+            val_size = int(self.taille_val * len(self.full_dataset))
+            train_size = len(self.full_dataset) - val_size
+            # random split va couper de façon aléatoire le dataset en sous-dataset disjoints 
+            # de taille train_size puis val_size. L'idée c'est de prendre aléatoirement des éléments
+            # du train data pour en faire dataset de validation.
+            # On n'a pas besoin de récupérer le "dataset d'entrainement" généré par rendom split d'où le _ 
+            
+            self.train_set, self.val_set = random_split(self.full_dataset, [train_size, val_size])
+
        
     def train_val_dataloader(self):
         return DataLoader(
