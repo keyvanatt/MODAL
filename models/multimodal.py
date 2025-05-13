@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from transformers import DistilBertTokenizer, DistilBertModel
-from dinov2 import DinoV2Finetune  # ton fichier fourni
+from dinov2 import DinoV2Finetune
 
 class MultiModalRegressor(nn.Module):
     def __init__(self, text_model_name='distilbert-base-uncased', freeze_dino=True):

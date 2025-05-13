@@ -1,5 +1,5 @@
 instance:
-  _target_: models.dinov2.DinoV2Finetune
+  _target_: models.multimodal.MultiModalRegressor
   text_model_name: distilbert-base-uncased
   freeze_dino : True
 
