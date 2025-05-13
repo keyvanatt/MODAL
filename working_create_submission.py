@@ -20,7 +20,7 @@ def test_model (cfg) :
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     model = hydra.utils.instantiate(cfg.model.instance)
-    model.load_state_dict(torch.load("/users/eleves-b/2023/louis.darrigol/CSC_43M04_EP_challenge/checkpoints/ATT&DAR_DINOV2_2025-05-05_18-13-53.pt"))
+    model.load_state_dict(torch.load("/users/eleves-b/2023/keyvan.attarian/MODAL/checkpoints/ATT&DAR_DINOV2_2025-05-13_16-44-40.pt",weights_only=False)['model_state_dict'], strict=False)
     model.to(device)
 
 
