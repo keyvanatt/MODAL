@@ -1,0 +1,6 @@
+instance:
+  _target_: models.dinov2.DinoV2Finetune
+  text_model_name: distilbert-base-uncased
+  freeze_dino : True
+
+name: MULTIMODAL
