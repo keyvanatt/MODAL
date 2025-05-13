@@ -3,8 +3,7 @@ import wandb
 import hydra
 from tqdm import tqdm
 
-# Coucou
-
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 from utils.sanity import show_images
 
@@ -41,6 +40,18 @@ def train(cfg, train_idx=None, val_idx=None):
     datamodule = hydra.utils.instantiate(cfg.datamodule, train_idx=train_idx, val_idx=val_idx)
     train_loader = datamodule.train_dataloader()
     val_loader = datamodule.val_dataloader()
+    
+    # Le scheduler permet de réduire le learning rate en même temps que la loss du validation set diminue
+    # mode = 'min' car on veut que le learning rate diminue
+    # factor = 0.3 -> le learning rate est diminué de ce facteur quand la condition est remplie
+    # patience = 3 : nombre d'epoch sans amélioration avant que le learning rate ne soit réduit
+    # Les paramètres sont empiriques. Ne pas hésiter à modifier
+    # On retient dans une variable min_learning rate le learning rate final du scheduler
+    # Cette variable min_learning_rate est très importante car elle conditionne la fin de
+    # la convergence
+    min_learning_rate = cfg.min_learning_rate
+    scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.3, patience=3, min_lr=1e-5)
+
     # Envoie le sanity check a wandb pour le training set
     train_sanity = show_images(train_loader, name="assets/sanity/train_images")
     (
@@ -54,9 +65,31 @@ def train(cfg, train_idx=None, val_idx=None):
         {"sanity_checks/val_images": wandb.Image(val_sanity)}
     )
 
-    # -- loop over epochs
-    for epoch in tqdm(range(cfg.epochs), desc="Epochs"):
-        # -- loop over training batches
+    # Le max_epoch est juste une sécurité et ne devrait pas influer sur la fin de la convergence
+    max_epochs = cfg.max_epochs
+    epoch = 0
+
+    ##################
+    # Enregistrement #
+    ##################
+    
+    # Uniquement si on souhaite restaurer un modèle qui était en entrainement    
+    checkpoint = torch.load('checkpoints/ATT&DAR_DINOV2_2025-05-11_17-05-05.pt', weights_only=False)
+    model.load_state_dict(checkpoint['model_state_dict'])
+    optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+    scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
+    epoch = checkpoint['epoch'] + 1  # Reprend à l'epoch suivante
+    
+    print ("Début training loop")
+
+    # On interrompt la boucle en fonction du learning rate et du max_epoch. 
+    # (cf min_learning_rate) plus haut
+    # Cf condition break à la fin.
+    while True : 
+        #################
+        # Training loop #
+        #################
+
         model.train()
         epoch_train_loss = 0
         # Compte le nombre d'images entraînées pour faire la moyenne pour le train_loss
@@ -70,14 +103,15 @@ def train(cfg, train_idx=None, val_idx=None):
             batch["target"] = batch["target"].to(device).squeeze()
             # Pass forward
             preds = model(batch).squeeze()
-            # On calcule le loss. Je sais pas si ca se fait sur le GPU mais à la limite on s'en fout
             loss = loss_fn(preds, batch["target"])
+            """
+            # Partie éliminée pour gagner en vitesse 
             # Là on envoit les données a wandb pour qu'il les affiche
             (
                 logger.log({"loss": loss.detach().cpu().numpy()})
                 if logger is not None
                 else None
-            )
+            )"""
             # Classico
             optimizer.zero_grad()
             loss.backward()
@@ -86,6 +120,12 @@ def train(cfg, train_idx=None, val_idx=None):
             num_samples_train += len(batch["image"])
             # Affiche la progression dans la console
             pbar.set_postfix({"train/loss_step": loss.detach().cpu().numpy()})
+        # On envoie le loss
+        (
+            logger.log({"loss": loss.detach().cpu().numpy()})
+            if logger is not None
+            else None
+        )
         epoch_train_loss /= num_samples_train
         # Pareil, on envoit a wandb
         (
@@ -99,7 +139,10 @@ def train(cfg, train_idx=None, val_idx=None):
             else None
         )
 
-        # -- validation loop
+        ###################
+        # Validation loop #
+        ###################
+
         val_metrics = {}
         epoch_val_loss = 0
         num_samples_val = 0
@@ -113,7 +156,14 @@ def train(cfg, train_idx=None, val_idx=None):
             epoch_val_loss += loss.detach().cpu().numpy() * len(batch["image"])
             num_samples_val += len(batch["image"])
         epoch_val_loss /= num_samples_val
+        # On envoie la loss au scheduler pour qu'il puisse influencer le learning rate
+        scheduler.step(epoch_val_loss)
+        # On récupère le learning rate effectif du modèle avant de l'envoyer à wandb
+        current_lr = optimizer.param_groups[0]["lr"]
+        print ("Epoch : " + str(epoch) + ", Learning rate : " + str(current_lr))
+        # On envoie tout à wandb
         val_metrics["val/loss_epoch"] = epoch_val_loss
+        val_metrics["learning_rate"] = current_lr
         (
             logger.log(
                 {
@@ -124,7 +174,32 @@ def train(cfg, train_idx=None, val_idx=None):
             if logger is not None
             else None
         )
-        model.loss = epoch_val_loss
+
+        ##############
+        # Sauvegarde #
+        ##############
+
+        if (epoch % cfg.checkpoint_interval == 0) :
+            checkpoint = {
+                'epoch': epoch,
+                'model_state_dict': model.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+                'scheduler_state_dict': scheduler.state_dict()
+            }
+            torch.save(checkpoint, cfg.checkpoint_path)
+            print ("Modèle enregistré !")
+
+        ################################
+        # Conditions de sortie de loop #
+        ################################
+        epoch += 1
+
+        if (current_lr <= min_learning_rate or epoch > max_epochs) :
+            print ("***")
+            print ("Fin de la convergence")
+            print ("***")
+            break
+
     print(
         f"""Epoch {epoch}: 
         Training metrics:

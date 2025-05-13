@@ -4,7 +4,6 @@ import hydra
 import csv
 from tqdm import tqdm
 
- #vive louis
 
 @hydra.main(config_path="configs", config_name="train")
 def main (cfg):
@@ -15,6 +14,7 @@ def test_model (cfg) :
     """
     L'objectif ici est de récupèrer le modèle enregistré et de le tester sur le dataset test
     et de calculer l'accuracy
+    ATTENTION : il faut changer le lien vers le modèle
     """
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
