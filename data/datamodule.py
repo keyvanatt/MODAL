@@ -13,7 +13,6 @@ class DataModule:
         batch_size,
         num_workers,
         taille_val,
-        metadata=["views"],
         train_idx=None,
         val_idx=None,
     ):
@@ -22,7 +21,6 @@ class DataModule:
         self.test_transform = test_transform
         self.batch_size = batch_size
         self.num_workers = num_workers
-        self.metadata = metadata
         self.taille_val = taille_val
         self.train_idx = train_idx
         self.val_idx = val_idx
@@ -31,7 +29,6 @@ class DataModule:
             self.dataset_path,
             "train_val",
             transforms=self.test_transform,  
-            metadata=self.metadata,
         )
 
         if self.train_idx is not None and self.val_idx is not None:
@@ -92,7 +89,6 @@ class DataModule:
             self.dataset_path,
             "test",
             transforms=self.test_transform,
-            metadata=self.metadata,
         )
         return DataLoader(
             dataset,

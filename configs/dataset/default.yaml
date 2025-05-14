@@ -4,4 +4,3 @@ defaults:
 
 batch_size: 256
 num_workers: 16
-metadata: ["title"]

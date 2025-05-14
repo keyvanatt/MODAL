@@ -1,5 +1,6 @@
 instance:
   _target_: models.dinov2.DinoV2Finetune
   frozen: True
+  regression: True
 
 name: DINOV2

@@ -1,19 +1,21 @@
 import torch
 import torch.nn as nn
 from transformers import DistilBertTokenizer, DistilBertModel
-from dinov2 import DinoV2Finetune
+from models.dinov2 import DinoV2Finetune
 
 class MultiModalRegressor(nn.Module):
     def __init__(self, text_model_name='distilbert-base-uncased', freeze_dino=True):
         super().__init__()
 
         # --- Image encoder: DINOv2
-        self.image_encoder = DinoV2Finetune(frozen=freeze_dino)
+        self.image_encoder = DinoV2Finetune(frozen=freeze_dino, regression=False)
         self.image_embedding_dim = self.image_encoder.dim
 
         # --- Text encoder (DistilBERT)
         self.tokenizer = DistilBertTokenizer.from_pretrained(text_model_name)
         self.text_encoder = DistilBertModel.from_pretrained(text_model_name)
+        for param in self.text_encoder.parameters():
+            param.requires_grad = False
         self.text_embedding_dim = self.text_encoder.config.hidden_size
 
         # --- Fusion + MLP
@@ -21,10 +23,20 @@ class MultiModalRegressor(nn.Module):
             nn.Linear(self.image_embedding_dim + 2 * self.text_embedding_dim, 256),
             nn.ReLU(),
             nn.Dropout(0.2),
-            nn.Linear(256, 1)  # Regression
+            nn.Linear(256, 1),
+            nn.ReLU(),
         )
 
-    def forward(self, image_tensor, title_texts, desc_texts):
+        print("shape of image encoder: ", self.image_embedding_dim)
+        print("shape of text encoder: ", self.text_embedding_dim)
+        print("shape of fusion: ", self.image_embedding_dim + 2 * self.text_embedding_dim)
+        print("shape of fc: ", 256)
+        print("shape of output: ", 1)
+
+    def forward(self, x):
+        image_tensor = x["image"]
+        title_texts = x["title"]
+        desc_texts = x["description"]
         device = image_tensor.device
 
         # --- Image features
@@ -45,3 +57,4 @@ class MultiModalRegressor(nn.Module):
         # --- Fusion & regression
         x = torch.cat([image_feat, title_feat, desc_feat], dim=1)
         return self.fc(x).squeeze(1)  # output: [B]
+

@@ -4,21 +4,21 @@ from PIL import Image
 
 
 class Dataset(torch.utils.data.Dataset):
-    def __init__(self, dataset_path, split, transforms, metadata):
+    def __init__(self, dataset_path, split, transforms):
         self.dataset_path = dataset_path
         self.split = split
         # - read the info csvs
         print(f"{dataset_path}/{split}.csv")
         info = pd.read_csv(f"{dataset_path}/{split}.csv")
         info["description"] = info["description"].fillna("")
-        info["meta"] = info[metadata].agg(" + ".join, axis=1)
         if "views" in info.columns:
             self.targets = info["views"].values
 
         # - ids
         self.ids = info["id"].values
         # - text
-        self.text = info["meta"].values
+        self.description = info["description"].values
+        self.title = info["title"].values
         
         # - transforms
         self.transforms = transforms
@@ -35,7 +35,8 @@ class Dataset(torch.utils.data.Dataset):
         value = {
             "id": self.ids[idx],
             "image": image,
-            "text": self.text[idx],
+            "title": self.title[idx],
+            "description": self.description[idx],
         }
         # - don't have the target for test
         if hasattr(self, "targets"):

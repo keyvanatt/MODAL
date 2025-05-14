@@ -3,6 +3,9 @@ import wandb
 import hydra
 from tqdm import tqdm
 
+from models.multimodal import MultiModalRegressor
+from models.dinov2 import DinoV2Finetune
+
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 from utils.sanity import show_images
@@ -32,7 +35,8 @@ def train(cfg, train_idx=None, val_idx=None):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     # On crée le modèle défini dans train.yaml sur hydra et le to(device) le balance 
     # sur le cpu s'il existe
-    model = hydra.utils.instantiate(cfg.model.instance).to(device)
+    #model = hydra.utils.instantiate(cfg.model.instance).to(device)
+    model = MultiModalRegressor(freeze_dino=True).to(device)
     # On crée l'optimizer défini sur train.yaml
     optimizer = hydra.utils.instantiate(cfg.optim, params=model.parameters())
     loss_fn = hydra.utils.instantiate(cfg.loss_fn)
@@ -74,7 +78,7 @@ def train(cfg, train_idx=None, val_idx=None):
     ##################
     
     # Uniquement si on souhaite restaurer un modèle qui était en entrainement    
-    checkpoint = torch.load('checkpoints/ATT&DAR_DINOV2_2025-05-11_17-05-05.pt', weights_only=False)
+    checkpoint = torch.load('/users/eleves-b/2023/keyvan.attarian/MODAL/checkpoints/ATT&DAR_MULTIMODAL_2025-05-14_11-26-13.pt', weights_only=False)
     model.load_state_dict(checkpoint['model_state_dict'])
     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
     scheduler.load_state_dict(checkpoint['scheduler_state_dict'])

@@ -3,7 +3,7 @@ import torch.nn as nn
 
 
 class DinoV2Finetune(nn.Module):
-    def __init__(self, frozen=False):
+    def __init__(self, frozen=False, regression=True):
         super().__init__()
         self.backbone = torch.hub.load("facebookresearch/dinov2", "dinov2_vitb14_reg")
         self.backbone.head = nn.Identity()
@@ -15,10 +15,12 @@ class DinoV2Finetune(nn.Module):
             nn.Linear(self.backbone.norm.normalized_shape[0], 1),
             nn.ReLU(),
         )
+        self.regression = regression
         self.accuracy = None
         self.loss = None
 
     def forward(self, x):
         x = self.backbone(x["image"])
-        x = self.regression_head(x)
+        if self.regression:
+            x = self.regression_head(x)
         return x
