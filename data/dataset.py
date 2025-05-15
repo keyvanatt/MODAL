@@ -13,7 +13,7 @@ class Dataset(torch.utils.data.Dataset):
         info = pd.read_csv(f"{dataset_path}/{split}.csv")
         info["description"] = info["description"].fillna("")
         if "views" in info.columns:
-            self.targets = info["views"].values
+            self.targets = info["log1p_views"].values
 
         # - ids
         self.ids = info["id"].values

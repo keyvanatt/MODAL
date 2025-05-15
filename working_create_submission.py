@@ -20,10 +20,9 @@ def test_model (cfg) :
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     model = hydra.utils.instantiate(cfg.model.instance)
-    checkpoint = torch.load("/users/eleves-b/2023/keyvan.attarian/MODAL/checkpoints/ATT&DAR_DINOV2_2025-05-13_17-30-14.pt",weights_only=False)
+    checkpoint = torch.load("/users/eleves-b/2023/keyvan.attarian/MODAL/checkpoints/ATT&DAR_MULTIMODAL_2025-05-14_18-19-08.pt",weights_only=False)
     print(f"Loading model from checkpoint: {cfg.checkpoint_path}")
-    print(f"{checkpoint['epoch']} epochs")
-    model.load_state_dict(checkpoint['model_state_dict'], strict=False)
+    model.load_state_dict(checkpoint, strict=False)
     model.to(device)
 
 
@@ -40,7 +39,8 @@ def test_model (cfg) :
             batch["image"] = batch["image"].to(device)
             with torch.no_grad():
                 out_data = model(batch)
-            resultats.append({"ID" : batch["id"].detach().cpu().numpy()[0], "TARGET" : out_data.detach().cpu().numpy()[0][0]})
+                out_data = torch.expm1(out_data)
+            resultats.append({"ID" : batch["id"].detach().cpu().numpy()[0], "TARGET" : out_data.detach().cpu().numpy()[0]})
             
     
     print (resultats)
