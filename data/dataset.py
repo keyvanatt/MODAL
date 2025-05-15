@@ -5,6 +5,7 @@ from PIL import Image
 
 class Dataset(torch.utils.data.Dataset):
     def __init__(self, dataset_path, split, transforms):
+        
         self.dataset_path = dataset_path
         self.split = split
         # - read the info csvs
@@ -19,6 +20,10 @@ class Dataset(torch.utils.data.Dataset):
         # - text
         self.description = info["description"].values
         self.title = info["title"].values
+        
+        # tabular data
+        self.channel = info["channel_id"].values
+        self.year = info["year"].values
         
         # - transforms
         self.transforms = transforms
@@ -37,8 +42,11 @@ class Dataset(torch.utils.data.Dataset):
             "image": image,
             "title": self.title[idx],
             "description": self.description[idx],
+            "channel": torch.tensor([self.channel[idx]]),
+            "year": torch.tensor([self.year[idx]])
         }
         # - don't have the target for test
         if hasattr(self, "targets"):
             value["target"] = torch.tensor(self.targets[idx], dtype=torch.float32)
         return value
+    

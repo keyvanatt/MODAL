@@ -105,6 +105,8 @@ def train(cfg, train_idx=None, val_idx=None):
             batch["image"] = batch["image"].to(device)
             # Pareil pour les labels
             batch["target"] = batch["target"].to(device).squeeze()
+            batch["channel"] = batch["channel"].to(device)
+            batch["year"] = batch["year"].to(device)
             # Pass forward
             preds = model(batch).squeeze()
             loss = loss_fn(preds, batch["target"])
@@ -154,6 +156,8 @@ def train(cfg, train_idx=None, val_idx=None):
         for _, batch in enumerate(val_loader):
             batch["image"] = batch["image"].to(device)
             batch["target"] = batch["target"].to(device).squeeze()
+            batch["channel"] = batch["channel"].to(device)
+            batch["year"] = batch["year"].to(device)
             with torch.no_grad():
                 preds = model(batch).squeeze()
             loss = loss_fn(preds, batch["target"])
