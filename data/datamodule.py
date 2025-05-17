@@ -3,6 +3,10 @@ from torch.utils.data import DataLoader
 from data.dataset import Dataset
 
 from torch.utils.data import random_split,Subset
+from sklearn.model_selection import train_test_split
+import numpy as np
+import matplotlib.pyplot as plt
+
 
 class DataModule:
     def __init__(
@@ -33,9 +37,7 @@ class DataModule:
 
         if self.train_idx is not None and self.val_idx is not None:
             print("Utilisation des indices fournis pour créer les ensembles d'entraînement et de validation.")
-            # On utilise les indices fournis pour créer les ensembles d'entraînement et de validation
-            self.train_set = Subset(self.full_dataset, self.train_idx)
-            self.val_set = Subset(self.full_dataset, self.val_idx)
+            
         else:
 
             # Le self.taillee_val est accessible dans le train.yaml. A modifier en fonction des besoins/envies
@@ -45,8 +47,48 @@ class DataModule:
             # de taille train_size puis val_size. L'idée c'est de prendre aléatoirement des éléments
             # du train data pour en faire dataset de validation.
             # On n'a pas besoin de récupérer le "dataset d'entrainement" généré par rendom split d'où le _ 
+            # Créer un tableau d'indices de bins pour chaque target
+            indices = np.arange(len(self.full_dataset))
+            # Stratify by both years and YouTube channels
+            years = np.array(self.full_dataset.year) 
+            channels = np.array(self.full_dataset.channel) 
+
+            self.train_idx, self.val_idx = train_test_split(
+                indices,
+                test_size=val_size,
+                stratify=years
+            )
+           
             
-            self.train_set, self.val_set = random_split(self.full_dataset, [train_size, val_size])
+        self.train_set = Subset(self.full_dataset, self.train_idx)
+        self.val_set = Subset(self.full_dataset, self.val_idx)
+
+        # Plot the distribution of targets in the training set
+        train_targets = np.array(self.full_dataset.targets)[self.train_idx]
+        plt.figure(figsize=(8, 4))
+        plt.hist(train_targets, bins=100, edgecolor='black')
+        plt.title("Distribution of Targets in Train Set")
+        plt.xlabel("Target")
+        plt.ylabel("Count")
+        plt.show()
+
+        # Plot the distribution of targets in the validation set
+        val_targets = np.array(self.full_dataset.targets)[self.val_idx]
+        plt.figure(figsize=(8, 4))
+        plt.hist(val_targets, bins=100, edgecolor='black')
+        plt.title("Distribution of Targets in Validation Set")
+        plt.xlabel("Target")
+        plt.ylabel("Count")
+        plt.show()
+
+        # Plot the distribution of targets in the training set
+        train_targets = np.array(self.full_dataset.targets)[self.train_idx]
+        plt.figure(figsize=(8, 4))
+        plt.hist(train_targets, bins=len(np.unique(train_targets)), edgecolor='black')
+        plt.title("Distribution of Targets in Train Set")
+        plt.xlabel("Target")
+        plt.ylabel("Count")
+        plt.show()
 
        
     def train_val_dataloader(self):
