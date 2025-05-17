@@ -18,22 +18,23 @@ class MultiModalRegressor(nn.Module):
             param.requires_grad = False
         self.text_embedding_dim = self.text_encoder.config.hidden_size
 
-        self.input_dim = self.image_embedding_dim + 2 * self.text_embedding_dim + 2
+        self.input_dim = self.image_embedding_dim + 2 * self.text_embedding_dim
+        self.tabular_dim = 2
         self.droupout = 0.2
 
         # --- Fusion + MLP
+        self.projector = nn.Sequential(
+            nn.Linear(self.input_dim, 512),
+            nn.ReLU(),
+            nn.Dropout(self.droupout)
+        )
         self.fc = nn.Sequential(
-            nn.Linear(self.input_dim, 2048),
-            nn.ReLU(),
-            nn.Dropout(self.droupout),
-            nn.Linear(2048, 512),
-            nn.ReLU(),
-            nn.Dropout(self.droupout),
-            nn.Linear(512, 128),
+            nn.Linear(512+self.tabular_dim, 128),
             nn.ReLU(),
             nn.Dropout(self.droupout),
             nn.Linear(128, 1),
-            
+            nn.ReLU(),
+            nn.Dropout(self.droupout)
         )
 
         print("shape of image encoder: ", self.image_embedding_dim)
@@ -64,6 +65,9 @@ class MultiModalRegressor(nn.Module):
         desc_feat = desc_outputs.last_hidden_state[:, 0, :]
 
         # --- Fusion & regression
-        x = torch.cat([image_feat, title_feat, desc_feat,channel,year], dim=1)
-        return self.fc(x).squeeze(1)  # output: [B]
+        x = torch.cat([image_feat, title_feat, desc_feat], dim=1)
+        x = self.projector(x)
+        x = torch.cat([x, channel.float(), year.float()], dim=1)
+        x = self.fc(x)
+        return x
 
