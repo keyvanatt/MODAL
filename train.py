@@ -39,7 +39,8 @@ def train(cfg, train_idx=None, val_idx=None):
     model = MultiModalRegressor(freeze_dino=True).to(device)
     # On crée l'optimizer défini sur train.yaml
     optimizer = hydra.utils.instantiate(cfg.optim, params=model.parameters())
-    loss_fn = hydra.utils.instantiate(cfg.loss_fn)
+    #loss_fn = hydra.utils.instantiate(cfg.loss_fn)
+    loss_fn = torch.nn.MSELoss()
     # Idem et le datamodule permet globalement de charger les images et les fournir au modèle
     datamodule = hydra.utils.instantiate(cfg.datamodule, train_idx=train_idx, val_idx=val_idx)
     train_loader = datamodule.train_dataloader()
@@ -78,11 +79,11 @@ def train(cfg, train_idx=None, val_idx=None):
     ##################
     
     # Uniquement si on souhaite restaurer un modèle qui était en entrainement    
-    checkpoint = torch.load('/users/eleves-b/2023/keyvan.attarian/MODAL/checkpoints/ATT&DAR_MULTIMODAL_2025-05-14_11-26-13.pt', weights_only=False)
-    model.load_state_dict(checkpoint['model_state_dict'])
-    optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-    scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
-    epoch = checkpoint['epoch'] + 1  # Reprend à l'epoch suivante
+    #checkpoint = torch.load('/users/eleves-b/2023/keyvan.attarian/MODAL/checkpoints/ATT&DAR_MULTIMODAL_2025-05-14_11-26-13.pt', weights_only=False)
+    #model.load_state_dict(checkpoint['model_state_dict'])
+    #optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+    #scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
+    #epoch = checkpoint['epoch'] + 1  # Reprend à l'epoch suivante
     
     print ("Début training loop")
 
@@ -126,12 +127,6 @@ def train(cfg, train_idx=None, val_idx=None):
             num_samples_train += len(batch["image"])
             # Affiche la progression dans la console
             pbar.set_postfix({"train/loss_step": loss.detach().cpu().numpy()})
-        # On envoie le loss
-        (
-            logger.log({"loss": loss.detach().cpu().numpy()})
-            if logger is not None
-            else None
-        )
         epoch_train_loss /= num_samples_train
         # Pareil, on envoit a wandb
         (
@@ -168,7 +163,7 @@ def train(cfg, train_idx=None, val_idx=None):
         scheduler.step(epoch_val_loss)
         # On récupère le learning rate effectif du modèle avant de l'envoyer à wandb
         current_lr = optimizer.param_groups[0]["lr"]
-        print ("Epoch : " + str(epoch) + ", Learning rate : " + str(current_lr))
+        print ("Epoch : " + str(epoch) + ", Learning rate : " + str(current_lr), "Validation Loss : " + str(epoch_val_loss))
         # On envoie tout à wandb
         val_metrics["val/loss_epoch"] = epoch_val_loss
         val_metrics["learning_rate"] = current_lr

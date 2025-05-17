@@ -3,7 +3,7 @@ defaults:
     - dataset: default
     - optim: adamw
     - model: multimodal
-    - loss_fn: msle
+    - loss_fn: mse
 
 max_epochs: 1000
 log: True
