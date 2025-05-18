@@ -17,14 +17,14 @@ class MultiModalRegressor(nn.Module):
         self.text_embedding_dim = self.text_encoder.dim
 
         self.channel_embedding_dim = 8
-        self.channel_embedding = nn.Embedding(1, self.channel_embedding_dim)
+        self.channel_number = 46
+        self.channel_embedding = nn.Embedding(self.channel_number, self.channel_embedding_dim)
 
         max_year = 2025
         min_year = 2011
         self.register_buffer("min_year", torch.tensor(min_year, dtype=torch.float32))
         self.register_buffer("max_year", torch.tensor(max_year, dtype=torch.float32))
 
-        self.input_dim = self.image_embedding_dim + self.text_embedding_dim
         self.tabular_dim = 2
         self.droupout = 0.2
         self.projection_dim = 256
@@ -40,8 +40,9 @@ class MultiModalRegressor(nn.Module):
             nn.ReLU(),
             nn.Dropout(self.droupout)
         )
+        self.reg_input_dim = 2*self.projection_dim+self.channel_embedding_dim+1
         self.reg_head = nn.Sequential(
-            nn.Linear(2*self.projection_dim+self.channel_embedding_dim, 1),
+            nn.Linear(self.reg_input_dim, 1),
             nn.ReLU(),
             nn.Dropout(self.droupout)
         )
@@ -70,8 +71,7 @@ class MultiModalRegressor(nn.Module):
 
 
         # --- Tabular features
-        channel_feat = self.channel_embedding(channel).squeeze(1)  # [B, dim]
-        print("channel_feat shape: ", channel_feat.shape)
+        channel_feat = self.channel_embedding(channel.squeeze(1))  # [B, dim]
         year = year.float()
         year_feat = (year - self.min_year) / (self.max_year - self.min_year)
 
