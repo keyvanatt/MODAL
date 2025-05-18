@@ -137,7 +137,7 @@ def train(cfg, train_idx=None, val_idx=None):
             # Partie éliminée pour gagner en vitesse 
             # Là on envoit les données a wandb pour qu'il les affiche
             (
-                logger.log({"loss": loss.detach().cpu().numpy()})
+                logger.log({"loss": loss.detach().cpu().numpy(),"year_avg": batch["year"].cpu().numpy().mean()})
                 if logger is not None
                 else None
             )

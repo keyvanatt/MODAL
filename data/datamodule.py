@@ -120,14 +120,25 @@ class DataModuleTemporal(DataModule):
         taille_val,
         train_idx=None,
         val_idx=None,
-        year_weights=[0.2,0.6,0.2] #year-1, year, year+1
     ):
         if train_idx is not None or val_idx is not None:
             raise ValueError("train_idx and val_idx should not be provided for DataModuleTemporal.")
         
-        self.val_idx = np.nonzero(np.array(self.full_dataset.year) == 2023)[0]
-        self.train_idx = np.nonzero(np.array(self.full_dataset.year) != 2023)[0]
-        self.year_weights = year_weights
+        self.full_dataset = Dataset(
+            dataset_path,
+            "train_val",
+            transforms=test_transform, #pas de data augmentation
+            sorted=True,
+        )
+        print("Entrainement temporalisé")
+        idx_2023 = np.nonzero(np.array(self.full_dataset.year) == 2023)[0]
+        idx_2022 = np.nonzero(np.array(self.full_dataset.year) == 2022)[0]
+        selected_2022 = np.random.choice(idx_2022, size=len(idx_2022)//2, replace=False)
+        # Ajouter à val_idx
+        self.val_idx = np.concatenate([selected_2022, idx_2023])
+        self.train_idx = np.setdiff1d(np.arange(len(self.full_dataset)), self.val_idx)
+        val_percentage = len(self.val_idx) / len(self.full_dataset) * 100
+        print(f"Pourcentage des données utilisées pour la validation : {val_percentage:.2f}%")
         
         super().__init__(
             dataset_path,
@@ -157,5 +168,4 @@ class DataModuleTemporal(DataModule):
             batch_size=self.batch_size,
             shuffle=False,
             num_workers=self.num_workers,
-            transform=self.train_transform
         )
