@@ -16,25 +16,30 @@ class MultiModalRegressor(nn.Module):
         self.text_encoder = DistilBertModel.from_pretrained(text_model_name)
         for param in self.text_encoder.parameters():
             param.requires_grad = False
+        # Unfreeze the last two layers of the backbone
+        for name, param in list(self.text_encoder.named_parameters())[-2:]:
+            param.requires_grad = True
         self.text_embedding_dim = self.text_encoder.config.hidden_size
 
-        self.input_dim = self.image_embedding_dim + 2 * self.text_embedding_dim
+        self.input_dim = self.image_embedding_dim + self.text_embedding_dim
         self.tabular_dim = 2
         self.droupout = 0.2
 
         # --- Fusion + MLP
-        self.projector = nn.Sequential(
-            nn.Linear(self.input_dim, 512),
+        self.img_projector = nn.Sequential(
+            nn.Linear(self.image_embedding_dim, 256),
+            nn.ReLU(),
+            nn.Dropout(self.droupout)
+        )
+        self.text_projector = nn.Sequential(
+            nn.Linear(self.text_embedding_dim, 256),
             nn.ReLU(),
             nn.Dropout(self.droupout)
         )
         self.fc = nn.Sequential(
-            nn.Linear(512+self.tabular_dim, 128),
-            nn.ReLU(),
             nn.Dropout(self.droupout),
-            nn.Linear(128, 1),
+            nn.Linear(512+self.tabular_dim, 1),
             nn.ReLU(),
-            nn.Dropout(self.droupout)
         )
 
         print("shape of image encoder: ", self.image_embedding_dim)
@@ -59,15 +64,15 @@ class MultiModalRegressor(nn.Module):
         title_feat = title_outputs.last_hidden_state[:, 0, :]  # [CLS] token
 
         # --- Description features
-        desc_inputs = self.tokenizer(desc_texts, return_tensors="pt", padding=True, truncation=True, max_length=200)
+        """desc_inputs = self.tokenizer(desc_texts, return_tensors="pt", padding=True, truncation=True, max_length=200)
         desc_inputs = {k: v.to(device) for k, v in desc_inputs.items()}
         desc_outputs = self.text_encoder(**desc_inputs)
-        desc_feat = desc_outputs.last_hidden_state[:, 0, :]
+        desc_feat = desc_outputs.last_hidden_state[:, 0, :]"""
 
         # --- Fusion & regression
-        x = torch.cat([image_feat, title_feat, desc_feat], dim=1)
-        x = self.projector(x)
-        x = torch.cat([x, channel.float(), year.float()], dim=1)
+        image_feat = self.img_projector(image_feat)
+        title_feat = self.text_projector(title_feat)
+        x = torch.cat([image_feat, title_feat, channel.float(), year.float()], dim=1)
         x = self.fc(x)
         return x
 
