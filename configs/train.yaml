@@ -12,7 +12,7 @@ experiment_name: ${prefix}${model.name}_${now:%Y-%m-%d_%H-%M-%S}
 
 checkpoint_interval: 5
 
-min_learning_rate: 1e-5
+min_learning_rate: 1e-7
 
 hydra:
   output_subdir: null
@@ -22,7 +22,7 @@ hydra:
 # Les trucs entre ${} font référence aux fichiers plus hauts dans l'arborescence
 
 datamodule:
-  _target_: data.datamodule.DataModule
+  _target_: data.datamodule.DataModuleTemporal
   dataset_path: ${data_dir}
   train_transform: ${dataset.train_transform}
   test_transform: ${dataset.val_transform}
