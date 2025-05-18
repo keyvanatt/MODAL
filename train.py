@@ -9,6 +9,7 @@ from models.dinov2 import DinoV2Finetune
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 from utils.sanity import show_images
+import numpy as np
 
 
 @hydra.main(config_path="configs", config_name="train")
@@ -55,7 +56,7 @@ def train(cfg, train_idx=None, val_idx=None):
     # Cette variable min_learning_rate est très importante car elle conditionne la fin de
     # la convergence
     min_learning_rate = cfg.min_learning_rate
-    scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.3, patience=3, min_lr=1e-5)
+    scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=3, min_lr=min_learning_rate)
 
     # Envoie le sanity check a wandb pour le training set
     train_sanity = show_images(train_loader, name="assets/sanity/train_images")
@@ -69,7 +70,28 @@ def train(cfg, train_idx=None, val_idx=None):
     logger.log(
         {"sanity_checks/val_images": wandb.Image(val_sanity)}
     )
+    import matplotlib.pyplot as plt
 
+    # Helper to plot and log target distributions
+    def log_target_distribution(loader, name, logger):
+        all_targets = []
+        for batch in loader:
+            targets = batch["target"].cpu().numpy().flatten()
+            all_targets.append(targets)
+        all_targets = np.concatenate(all_targets)
+        plt.figure()
+        plt.hist(all_targets, bins=30, alpha=0.7)
+        plt.title(f"Target Distribution: {name}")
+        plt.xlabel("Target")
+        plt.ylabel("Count")
+        plt.tight_layout()
+        plt.savefig(f"assets/sanity/{name}_target_dist.png")
+        if logger is not None:
+            logger.log({f"sanity_checks/{name}_target_dist": wandb.Image(plt.gcf())})
+        plt.close()
+
+    log_target_distribution(train_loader, "train", logger)
+    log_target_distribution(val_loader, "val", logger)
     # Le max_epoch est juste une sécurité et ne devrait pas influer sur la fin de la convergence
     max_epochs = cfg.max_epochs
     epoch = 0
@@ -111,14 +133,14 @@ def train(cfg, train_idx=None, val_idx=None):
             # Pass forward
             preds = model(batch).squeeze()
             loss = loss_fn(preds, batch["target"])
-            """
+            
             # Partie éliminée pour gagner en vitesse 
             # Là on envoit les données a wandb pour qu'il les affiche
             (
                 logger.log({"loss": loss.detach().cpu().numpy()})
                 if logger is not None
                 else None
-            )"""
+            )
             # Classico
             optimizer.zero_grad()
             loss.backward()
@@ -163,7 +185,7 @@ def train(cfg, train_idx=None, val_idx=None):
         scheduler.step(epoch_val_loss)
         # On récupère le learning rate effectif du modèle avant de l'envoyer à wandb
         current_lr = optimizer.param_groups[0]["lr"]
-        print ("Epoch : " + str(epoch) + ", Learning rate : " + str(current_lr), "Validation Loss : " + str(epoch_val_loss))
+        print ("Epoch : " + str(epoch) + ", Learning rate : " + str(current_lr)+ ", Training Loss : " + str(epoch_train_loss) + ", Validation Loss : " + str(epoch_val_loss))
         # On envoie tout à wandb
         val_metrics["val/loss_epoch"] = epoch_val_loss
         val_metrics["learning_rate"] = current_lr
@@ -214,7 +236,14 @@ def train(cfg, train_idx=None, val_idx=None):
     if cfg.log:
         logger.finish()
 
-    torch.save(model.state_dict(), cfg.checkpoint_path)
+    checkpoint = {
+                'epoch': epoch,
+                'model_state_dict': model.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+                'scheduler_state_dict': scheduler.state_dict()
+            }
+    torch.save(checkpoint, cfg.checkpoint_path)
+    print ("Modèle enregistré !")
     return (model)
 
 

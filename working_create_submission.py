@@ -37,10 +37,12 @@ def test_model (cfg) :
         # Attention : les DataLoader ne sont pas indexables directement
         for batch in test_loader:
             batch["image"] = batch["image"].to(device)
+            batch["channel"] = batch["channel"].to(device)
+            batch["year"] = batch["year"].to(device)
             with torch.no_grad():
                 out_data = model(batch)
                 out_data = torch.expm1(out_data)
-            resultats.append({"ID" : batch["id"].detach().cpu().numpy()[0], "TARGET" : out_data.detach().cpu().numpy()[0]})
+            resultats.append({"ID" : batch["id"].detach().cpu().numpy()[0], "TARGET" : out_data.detach().cpu().numpy()[0][0]})
             
     
     print (resultats)
