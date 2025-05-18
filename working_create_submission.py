@@ -20,7 +20,7 @@ def test_model (cfg) :
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     model = hydra.utils.instantiate(cfg.model.instance)
-    checkpoint = torch.load("/users/eleves-b/2023/keyvan.attarian/MODAL/checkpoints/ATT&DAR_MULTIMODAL_2025-05-14_18-19-08.pt",weights_only=False)
+    checkpoint = torch.load("checkpoints/ATT&DAR_MULTIMODAL_2025-05-18_10-50-05.pt",weights_only=False)["model_state_dict"]
     print(f"Loading model from checkpoint: {cfg.checkpoint_path}")
     model.load_state_dict(checkpoint, strict=False)
     model.to(device)

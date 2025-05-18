@@ -40,8 +40,7 @@ def train(cfg, train_idx=None, val_idx=None):
     model = MultiModalRegressor(freeze_dino=True).to(device)
     # On crée l'optimizer défini sur train.yaml
     optimizer = hydra.utils.instantiate(cfg.optim, params=model.parameters())
-    #loss_fn = hydra.utils.instantiate(cfg.loss_fn)
-    loss_fn = torch.nn.MSELoss()
+    loss_fn = hydra.utils.instantiate(cfg.loss_fn)
     # Idem et le datamodule permet globalement de charger les images et les fournir au modèle
     datamodule = hydra.utils.instantiate(cfg.datamodule, train_idx=train_idx, val_idx=val_idx)
     train_loader = datamodule.train_dataloader()
@@ -100,12 +99,13 @@ def train(cfg, train_idx=None, val_idx=None):
     # Enregistrement #
     ##################
     
-    # Uniquement si on souhaite restaurer un modèle qui était en entrainement    
-    #checkpoint = torch.load('/users/eleves-b/2023/keyvan.attarian/MODAL/checkpoints/ATT&DAR_MULTIMODAL_2025-05-14_11-26-13.pt', weights_only=False)
-    #model.load_state_dict(checkpoint['model_state_dict'])
-    #optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-    #scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
-    #epoch = checkpoint['epoch'] + 1  # Reprend à l'epoch suivante
+    if False:
+    #Uniquement si on souhaite restaurer un modèle qui était en entrainement    
+        checkpoint = torch.load('checkpoints/ATT&DAR_MULTIMODAL_2025-05-17_22-39-18.pt', weights_only=False)
+        model.load_state_dict(checkpoint)
+        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
+        epoch = checkpoint['epoch'] + 1  # Reprend à l'epoch suivante
     
     print ("Début training loop")
 

@@ -4,7 +4,7 @@ import torch.nn as nn
 
 class DistilBert(nn.Module):
     def __init__(self, text_model_name='distilbert-base-uncased', freeze=True, freeze_last_layers=False):
-
+        super().__init__()
         self.tokenizer = DistilBertTokenizer.from_pretrained(text_model_name)
         self.text_encoder = DistilBertModel.from_pretrained(text_model_name)
         if freeze:

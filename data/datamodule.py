@@ -19,6 +19,7 @@ class DataModule:
         taille_val,
         train_idx=None,
         val_idx=None,
+        sorted_dataset=False,
     ):
         self.dataset_path = dataset_path
         self.train_transform = train_transform  
@@ -32,7 +33,8 @@ class DataModule:
         self.full_dataset = Dataset(
             self.dataset_path,
             "train_val",
-            transforms=self.test_transform,  
+            transforms=self.test_transform, #pas de data augmentation
+            sorted=sorted_dataset,
         )
 
         if self.train_idx is not None and self.val_idx is not None:
@@ -63,33 +65,7 @@ class DataModule:
         self.train_set = Subset(self.full_dataset, self.train_idx)
         self.val_set = Subset(self.full_dataset, self.val_idx)
 
-        # Plot the distribution of targets in the training set
-        train_targets = np.array(self.full_dataset.targets)[self.train_idx]
-        plt.figure(figsize=(8, 4))
-        plt.hist(train_targets, bins=100, edgecolor='black')
-        plt.title("Distribution of Targets in Train Set")
-        plt.xlabel("Target")
-        plt.ylabel("Count")
-        plt.show()
-
-        # Plot the distribution of targets in the validation set
-        val_targets = np.array(self.full_dataset.targets)[self.val_idx]
-        plt.figure(figsize=(8, 4))
-        plt.hist(val_targets, bins=100, edgecolor='black')
-        plt.title("Distribution of Targets in Validation Set")
-        plt.xlabel("Target")
-        plt.ylabel("Count")
-        plt.show()
-
-        # Plot the distribution of targets in the training set
-        train_targets = np.array(self.full_dataset.targets)[self.train_idx]
-        plt.figure(figsize=(8, 4))
-        plt.hist(train_targets, bins=len(np.unique(train_targets)), edgecolor='black')
-        plt.title("Distribution of Targets in Train Set")
-        plt.xlabel("Target")
-        plt.ylabel("Count")
-        plt.show()
-
+        
        
     def train_val_dataloader(self):
         return DataLoader(
@@ -109,14 +85,7 @@ class DataModule:
         )
 
     def val_dataloader(self):
-        """
-        Ancien TODO. On prend aléatoirement 10% du training set pour en faire un validation set
-        que l'on renvoie au format DataLoader de PyTorch.
-        
-        TODO: 
-        Implement a strategy to create a validation set from the train set.
-        """
-        
+        """Validation dataloader."""
         return DataLoader(
             self.val_set,
             batch_size=self.batch_size,
@@ -137,4 +106,56 @@ class DataModule:
             batch_size=1,
             shuffle=False,
             num_workers=self.num_workers,
+        )
+    
+
+class DataModuleTemporal(DataModule):
+    def __init__(
+        self,
+        dataset_path,
+        train_transform,
+        test_transform,
+        batch_size,
+        num_workers,
+        taille_val,
+        train_idx=None,
+        val_idx=None,
+        year_weights=[0.2,0.6,0.2] #year-1, year, year+1
+    ):
+        if train_idx is not None or val_idx is not None:
+            raise ValueError("train_idx and val_idx should not be provided for DataModuleTemporal.")
+        
+        self.val_idx = np.nonzero(np.array(self.full_dataset.year) == 2023)[0]
+        self.train_idx = np.nonzero(np.array(self.full_dataset.year) != 2023)[0]
+        self.year_weights = year_weights
+        
+        super().__init__(
+            dataset_path,
+            train_transform,
+            test_transform,
+            batch_size,
+            num_workers,
+            taille_val,
+            train_idx=self.train_idx,
+            val_idx=self.val_idx,
+            sorted_dataset=True,
+        )
+
+    def train_val_dataloader(self):
+        return super().train_val_dataloader()
+    
+    def val_dataloader(self):
+        return super().val_dataloader()
+    
+    def test_dataloader(self):
+        return super().test_dataloader()
+    
+    def train_dataloader(self):
+        """Train dataloader."""
+        return DataLoader(
+            self.train_set,
+            batch_size=self.batch_size,
+            shuffle=False,
+            num_workers=self.num_workers,
+            transform=self.train_transform
         )

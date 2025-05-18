@@ -4,7 +4,7 @@ from PIL import Image
 
 
 class Dataset(torch.utils.data.Dataset):
-    def __init__(self, dataset_path, split, transforms):
+    def __init__(self, dataset_path, split, transforms, sorted=False):
         
         self.dataset_path = dataset_path
         self.split = split
@@ -27,6 +27,18 @@ class Dataset(torch.utils.data.Dataset):
         
         # - transforms
         self.transforms = transforms
+
+        # sort the dataset by year
+        if sorted:
+            sorted_indices = self.year.argsort()
+            self.ids = self.ids[sorted_indices]
+            self.description = self.description[sorted_indices]
+            self.title = self.title[sorted_indices]
+            self.channel = self.channel[sorted_indices]
+            self.year = self.year[sorted_indices]
+
+            if hasattr(self, "targets"):
+                self.targets = self.targets[sorted_indices]
 
     def __len__(self):
         return self.ids.shape[0]
