@@ -225,9 +225,9 @@ def train(cfg, train_idx=None, val_idx=None):
                 print ("Modèle enregistré !")
 
         # Si le modèle est pire que le dernier, on repart avec le précédent
-        if (checkpoint['val_loss'] < epoch_val_loss * (1 + cfg.aberration_val_loss)):
+        if (epoch != 0 and checkpoint['val_loss'] < epoch_val_loss * (1 - cfg.aberration_val_loss)):
             print ("Aberration de la val_loss")
-            model.load_state_dict(checkpoint)
+            model.load_state_dict(checkpoint['model_state_dict'])
             optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         
 

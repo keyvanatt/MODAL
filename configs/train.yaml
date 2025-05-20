@@ -17,7 +17,7 @@ patience_learning_rate: 3
 factor_learning_rate: 0.5
 
 # Correspond à la tolérance maximale de remontée de val_loss
-aberration_val_loss: 0.2
+aberration_val_loss: 0.1
 
 hydra:
   output_subdir: null
