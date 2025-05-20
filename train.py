@@ -56,8 +56,7 @@ def train(cfg, train_idx=None, val_idx=None):
     # On retient dans une variable min_learning rate le learning rate final du scheduler
     # Cette variable min_learning_rate est très importante car elle conditionne la fin de
     # la convergence
-    min_learning_rate = cfg.min_learning_rate
-    scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=3, min_lr=min_learning_rate)
+    scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=cfg.factor_learning_rate, patience=cfg.patience_learning_rate, min_lr=cfg.min_learning_rate)
 
     # Envoie le sanity check a wandb pour le training set
     train_sanity = show_images(train_loader, name="assets/sanity/train_images")
@@ -205,11 +204,13 @@ def train(cfg, train_idx=None, val_idx=None):
         # Sauvegarde #
         ##############
 
+        # On récupère le dernier checkpoint en vérifiant que l'on a déjà sauvegardé
+        # un modèle avant
+        if (epoch != 0) : 
+            checkpoint = torch.load(cfg.checkpoint_path, weights_only=False)
+        
+        # On sauvegarde à intervalles réguliers
         if (epoch % cfg.checkpoint_interval == 0) :
-            # On récupère le dernier checkpoint en vérifiant que l'on a déjà sauvegardé
-            # un modèle avant
-            if (epoch != 0) : 
-                checkpoint = torch.load(cfg.checkpoint_path, weights_only=False)
             # On verifie si le val_loss est meilleur que le dernier
             if (epoch == 0 or checkpoint['val_loss'] > epoch_val_loss) :
                 # Si oui, on sauvegarde le modèle    
@@ -223,12 +224,19 @@ def train(cfg, train_idx=None, val_idx=None):
                 torch.save(checkpoint, cfg.checkpoint_path)
                 print ("Modèle enregistré !")
 
+        # Si le modèle est pire que le dernier, on repart avec le précédent
+        if (checkpoint['val_loss'] < epoch_val_loss * (1 + cfg.aberration_val_loss)):
+            print ("Aberration de la val_loss")
+            model.load_state_dict(checkpoint)
+            optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        
+
         ################################
         # Conditions de sortie de loop #
         ################################
         epoch += 1
 
-        if (current_lr <= min_learning_rate or epoch > max_epochs) :
+        if (current_lr <= cfg.min_learning_rate or epoch > max_epochs) :
             print ("***")
             print ("Fin de la convergence")
             print ("***")
