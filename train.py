@@ -112,7 +112,7 @@ def train(cfg, train_idx=None, val_idx=None):
     # On interrompt la boucle en fonction du learning rate et du max_epoch. 
     # (cf min_learning_rate) plus haut
     # Cf condition break à la fin.
-    while False : 
+    while True : 
         #################
         # Training loop #
         #################
@@ -205,14 +205,22 @@ def train(cfg, train_idx=None, val_idx=None):
         ##############
 
         if (epoch % cfg.checkpoint_interval == 0) :
-            checkpoint = {
-                'epoch': epoch,
-                'model_state_dict': model.state_dict(),
-                'optimizer_state_dict': optimizer.state_dict(),
-                'scheduler_state_dict': scheduler.state_dict()
-            }
-            torch.save(checkpoint, cfg.checkpoint_path)
-            print ("Modèle enregistré !")
+            # On récupère le dernier checkpoint en vérifiant que l'on a déjà sauvegardé
+            # un modèle avant
+            if (epoch != cfg.checkpoint_interval ) : 
+                checkpoint = torch.load(cfg.checkpoint_path, weights_only=False)
+            # On verifie si le val_loss est meilleur que le dernier
+            if (epoch == cfg.checkpoint_interval or checkpoint['val_loss'] > epoch_val_loss) :
+                # Si oui, on sauvegarde le modèle    
+                checkpoint = {
+                    'epoch': epoch,
+                    'model_state_dict': model.state_dict(),
+                    'optimizer_state_dict': optimizer.state_dict(),
+                    'scheduler_state_dict': scheduler.state_dict(),
+                    'val_loss': epoch_val_loss,
+                }
+                torch.save(checkpoint, cfg.checkpoint_path)
+                print ("Modèle enregistré !")
 
         ################################
         # Conditions de sortie de loop #
@@ -237,11 +245,11 @@ def train(cfg, train_idx=None, val_idx=None):
         logger.finish()
 
     checkpoint = {
-                'epoch': epoch,
-                'model_state_dict': model.state_dict(),
-                'optimizer_state_dict': optimizer.state_dict(),
-                'scheduler_state_dict': scheduler.state_dict()
-            }
+        'epoch': epoch,
+        'model_state_dict': model.state_dict(),
+        'optimizer_state_dict': optimizer.state_dict(),
+        'scheduler_state_dict': scheduler.state_dict()
+    }
     torch.save(checkpoint, cfg.checkpoint_path)
     print ("Modèle enregistré !")
     return (model)

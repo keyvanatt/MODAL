@@ -10,7 +10,7 @@ log: True
 prefix: "ATT&DAR_"
 experiment_name: ${prefix}${model.name}_${now:%Y-%m-%d_%H-%M-%S}
 
-checkpoint_interval: 5
+checkpoint_interval: 1
 
 min_learning_rate: 1e-7
 
