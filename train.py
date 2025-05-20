@@ -16,6 +16,7 @@ import numpy as np
 
 @hydra.main(config_path="configs", config_name="train")
 def main (cfg):
+    print ("START")
     model = train (cfg)
     #test_model(cfg, model)
 
@@ -48,6 +49,11 @@ def train(cfg, train_idx=None, val_idx=None):
     train_loader = datamodule.train_dataloader()
     val_loader = datamodule.val_dataloader()
     
+    # Permet de charger le modèle avec le meilleur validation loss en cas 
+    # de remontée du val_loss
+    val_loss_min = -1
+
+
     # Le scheduler permet de réduire le learning rate en même temps que la loss du validation set diminue
     # mode = 'min' car on veut que le learning rate diminue
     # factor = 0.3 -> le learning rate est diminué de ce facteur quand la condition est remplie
@@ -204,6 +210,9 @@ def train(cfg, train_idx=None, val_idx=None):
         # Sauvegarde #
         ##############
 
+        if (val_loss_min == -1) :   
+            val_loss_min = epoch_val_loss
+
         # On récupère le dernier checkpoint en vérifiant que l'on a déjà sauvegardé
         # un modèle avant
         if (epoch != 0) : 
@@ -224,9 +233,24 @@ def train(cfg, train_idx=None, val_idx=None):
                 torch.save(checkpoint, cfg.checkpoint_path)
                 print ("Modèle enregistré !")
 
-        # Si le modèle est pire que le dernier, on repart avec le précédent
-        if (epoch != 0 and checkpoint['val_loss'] < epoch_val_loss * (1 - cfg.aberration_val_loss)):
+        if (epoch_val_loss <= val_loss_min) :    
+            val_loss_min = epoch_val_loss
+            # Si oui, on sauvegarde le modèle    
+            checkpoint = {
+                'epoch': epoch,
+                'model_state_dict': model.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+                'scheduler_state_dict': scheduler.state_dict(),
+                'val_loss': epoch_val_loss,
+            }
+            torch.save(checkpoint, cfg.checkpoint_path+"min")
+            print ("Modèle optimal enregistré !")
+
+
+        # Si le modèle est pire que le meilleur, on repart avec le précédent
+        if (epoch != 0 and val_loss_min < epoch_val_loss * (1 - cfg.aberration_val_loss)):
             print ("Aberration de la val_loss")
+            checkpoint = torch.load(cfg.checkpoint_path+"min", weights_only=False)
             model.load_state_dict(checkpoint['model_state_dict'])
             optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         
