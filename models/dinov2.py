@@ -13,7 +13,7 @@ class DinoV2Finetune(nn.Module):
                 param.requires_grad = False
         # Unfreeze the last two layers of the backbone
             for name, param in list(self.backbone.named_parameters())[-2:]:
-                param.requires_grad = True
+                param.requires_grad = False
         self.regression_head = nn.Sequential(
             nn.Linear(self.backbone.norm.normalized_shape[0], 1),
             nn.ReLU(),

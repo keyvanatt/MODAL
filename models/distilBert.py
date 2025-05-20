@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 
 class DistilBert(nn.Module):
-    def __init__(self, text_model_name='distilbert-base-uncased', freeze=True, freeze_last_layers=False):
+    def __init__(self, text_model_name, freeze=True, freeze_last_layers=False):
         super().__init__()
         self.tokenizer = DistilBertTokenizer.from_pretrained(text_model_name)
         self.text_encoder = DistilBertModel.from_pretrained(text_model_name)
@@ -12,7 +12,7 @@ class DistilBert(nn.Module):
                 param.requires_grad = False
             if not freeze_last_layers:
                 for name, param in list(self.text_encoder.named_parameters())[-2:]:
-                    param.requires_grad = True
+                    param.requires_grad = False
         self.dim = self.text_encoder.config.hidden_size
 
     def forward(self, input_text,device):

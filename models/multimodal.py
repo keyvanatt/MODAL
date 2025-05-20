@@ -5,7 +5,7 @@ from models.dinov2 import DinoV2Finetune
 from models.distilBert import DistilBert
 
 class MultiModalRegressor(nn.Module):
-    def __init__(self, text_model_name='distilbert-base-uncased', freeze_dino=True):
+    def __init__(self, text_model_name='distilbert-base-multilingual-cased', freeze_dino=True):
         super().__init__()
 
         # --- Image encoder: DINOv2
