@@ -2,6 +2,8 @@ import torch
 import wandb
 import hydra
 from tqdm import tqdm
+import matplotlib.pyplot as plt
+
 
 from models.multimodal import MultiModalRegressor
 from models.dinov2 import DinoV2Finetune
@@ -69,8 +71,7 @@ def train(cfg, train_idx=None, val_idx=None):
     logger.log(
         {"sanity_checks/val_images": wandb.Image(val_sanity)}
     )
-    import matplotlib.pyplot as plt
-
+    
     # Helper to plot and log target distributions
     def log_target_distribution(loader, name, logger):
         all_targets = []
@@ -207,10 +208,10 @@ def train(cfg, train_idx=None, val_idx=None):
         if (epoch % cfg.checkpoint_interval == 0) :
             # On récupère le dernier checkpoint en vérifiant que l'on a déjà sauvegardé
             # un modèle avant
-            if (epoch != cfg.checkpoint_interval ) : 
+            if (epoch != 0) : 
                 checkpoint = torch.load(cfg.checkpoint_path, weights_only=False)
             # On verifie si le val_loss est meilleur que le dernier
-            if (epoch == cfg.checkpoint_interval or checkpoint['val_loss'] > epoch_val_loss) :
+            if (epoch == 0 or checkpoint['val_loss'] > epoch_val_loss) :
                 # Si oui, on sauvegarde le modèle    
                 checkpoint = {
                     'epoch': epoch,
