@@ -120,15 +120,16 @@ class DataModuleTemporal(DataModule):
         taille_val,
         train_idx=None,
         val_idx=None,
+        sliding_window=False
     ):
         if train_idx is not None or val_idx is not None:
             raise ValueError("train_idx and val_idx should not be provided for DataModuleTemporal.")
-        
+        self.sliding_window = sliding_window
         self.full_dataset = Dataset(
             dataset_path,
             "train_val",
             transforms=test_transform, #pas de data augmentation
-            sorted=True,
+            sorted=sliding_window,
         )
         print("Entrainement temporalisé")
         idx_2023 = np.nonzero(np.array(self.full_dataset.year) == 2023)[0]
@@ -149,7 +150,7 @@ class DataModuleTemporal(DataModule):
             taille_val,
             train_idx=self.train_idx,
             val_idx=self.val_idx,
-            sorted_dataset=True,
+            sorted_dataset=sliding_window,
         )
 
     def train_val_dataloader(self):
@@ -166,6 +167,6 @@ class DataModuleTemporal(DataModule):
         return DataLoader(
             self.train_set,
             batch_size=self.batch_size,
-            shuffle=False,
+            shuffle=not self.sliding_window,
             num_workers=self.num_workers,
         )
