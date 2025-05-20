@@ -112,7 +112,7 @@ def train(cfg, train_idx=None, val_idx=None):
     # On interrompt la boucle en fonction du learning rate et du max_epoch. 
     # (cf min_learning_rate) plus haut
     # Cf condition break à la fin.
-    while True : 
+    while False : 
         #################
         # Training loop #
         #################
