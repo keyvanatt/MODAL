@@ -1,8 +1,7 @@
 import torch
 import torch.nn as nn
-from transformers import DistilBertTokenizer, DistilBertModel
 from models.dinov2 import DinoV2Finetune
-from models.distilBert import DistilBert
+from models.distilBert import DistilBertEncoder
 
 class MultiModalRegressor(nn.Module):
     def __init__(self, text_model_name='distilbert-base-multilingual-cased', freeze_dino=True):
@@ -13,7 +12,7 @@ class MultiModalRegressor(nn.Module):
         self.image_embedding_dim = self.image_encoder.dim
 
         # --- Text encoder (DistilBERT)
-        self.text_encoder = DistilBert(text_model_name=text_model_name)
+        self.text_encoder = DistilBertEncoder(model_name=text_model_name)
         self.text_embedding_dim = self.text_encoder.dim
 
         self.channel_embedding_dim = 8
@@ -66,7 +65,7 @@ class MultiModalRegressor(nn.Module):
         image_feat = self.image_projector(image_feat)
 
         # --- Title features
-        title_feat = self.text_encoder(title_texts,device)
+        title_feat = self.text_encoder(title_texts)
         title_feat = self.text_projector(title_feat)
 
 
