@@ -141,3 +141,5 @@ venv/*
 # End of https://www.gitignore.io/api/python,visualstudiocode
 assets/sanity/train_target_dist.png
 assets/sanity/val_target_dist.png
+assets/sanity/train_target_dist.png
+assets/sanity/val_target_dist.png
