@@ -28,11 +28,10 @@ class MultiModalAttentionRegressor(nn.Module):
 
         self.tabular_dim = 2
         self.droupout = 0.2
-        self.projection_dim = 256
 
 
         self.cross_attn = nn.MultiheadAttention(
-            embed_dim=self.projection_dim,
+            embed_dim=self.image_embedding_dim,
             num_heads=8,
             batch_first=True
         )
@@ -71,7 +70,7 @@ class MultiModalAttentionRegressor(nn.Module):
         # text_tokens: (batch, seq_len_text, embed_dim) -> Q
         # image_tokens: (batch, seq_len_img, embed_dim) -> K, V
         # nn.MultiheadAttention expects (batch, seq, embed_dim) with batch_first=True
-        attn_output, _ = self.cross_attn(query=text_tokens, key=image_tokens, value=image_tokens, attention_mask=None)
+        attn_output, _ = self.cross_attn(query=text_tokens, key=image_tokens, value=image_tokens)
         x = attn_output.transpose(1, 2)  # (batch, embed_dim, seq_len_text)
         x = self.pool(x).squeeze(-1)  # (batch, embed_dim)
 
