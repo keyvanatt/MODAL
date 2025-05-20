@@ -5,7 +5,7 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 
 
-from models.multimodal import MultiModalRegressor
+from models.multimodalAttention import MultiModalAttentionRegressor
 from models.dinov2 import DinoV2Finetune
 
 from torch.optim.lr_scheduler import ReduceLROnPlateau
@@ -40,7 +40,7 @@ def train(cfg, train_idx=None, val_idx=None):
     # On crée le modèle défini dans train.yaml sur hydra et le to(device) le balance 
     # sur le cpu s'il existe
     #model = hydra.utils.instantiate(cfg.model.instance).to(device)
-    model = MultiModalRegressor(freeze_dino=True).to(device)
+    model = MultiModalAttentionRegressor().to(device)
     # On crée l'optimizer défini sur train.yaml
     optimizer = hydra.utils.instantiate(cfg.optim, params=model.parameters())
     loss_fn = hydra.utils.instantiate(cfg.loss_fn)
