@@ -3,7 +3,9 @@ import wandb
 import hydra
 from tqdm import tqdm
 import matplotlib.pyplot as plt
-
+import os
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 
 from models.multimodalAttention import MultiModalAttentionRegressor
 from models.dinov2 import DinoV2Finetune
@@ -105,10 +107,10 @@ def train(cfg, train_idx=None, val_idx=None):
     # Enregistrement #
     ##################
     
-    if False:
+    if True:
     #Uniquement si on souhaite restaurer un modèle qui était en entrainement    
-        checkpoint = torch.load('checkpoints/ATT&DAR_MULTIMODAL_2025-05-17_22-39-18.pt', weights_only=False)
-        model.load_state_dict(checkpoint)
+        checkpoint = torch.load('checkpoints/ATT&DAR_MULTIMODAL_2025-05-21_11-46-39.ptmin', weights_only=False)
+        model.load_state_dict(checkpoint['model_state_dict'])
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
         epoch = checkpoint['epoch'] + 1  # Reprend à l'epoch suivante
@@ -215,9 +217,18 @@ def train(cfg, train_idx=None, val_idx=None):
 
         # On récupère le dernier checkpoint en vérifiant que l'on a déjà sauvegardé
         # un modèle avant
-        if (epoch != 0) : 
+        try: 
             checkpoint = torch.load(cfg.checkpoint_path, weights_only=False)
-        
+        except FileNotFoundError:
+            checkpoint = {
+                'epoch': 0,
+                'model_state_dict': model.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+                'scheduler_state_dict': scheduler.state_dict(),
+                'val_loss': epoch_val_loss,
+            }
+            torch.save(checkpoint, cfg.checkpoint_path)
+            print ("Modèle enregistré !")
         # On sauvegarde à intervalles réguliers
         if (epoch % cfg.checkpoint_interval == 0) :
             # On verifie si le val_loss est meilleur que le dernier
