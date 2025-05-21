@@ -18,7 +18,6 @@ import numpy as np
 
 @hydra.main(config_path="configs", config_name="train")
 def main (cfg):
-    return
     print ("START")
     model = train (cfg)
     #test_model(cfg, model)
@@ -219,8 +218,6 @@ def train(cfg, train_idx=None, val_idx=None):
         if (epoch == 0) :   
             # 1ere epoch : on n'a pas encore enregistré de modèle
             val_loss_min = epoch_val_loss
-        else : 
-            checkpoint = torch.load(cfg.checkpoint_path, weights_only=False)
         
         # On sauvegarde à intervalles réguliers
         if (epoch % cfg.checkpoint_interval == 0) :

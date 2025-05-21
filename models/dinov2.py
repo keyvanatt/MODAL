@@ -80,6 +80,7 @@ class DinoV2Finetune(nn.Module):
 
     def forward2(self, x, k=32):
         """
+        Non fonctionnel
         Implémente PCA à partir du code de Kayvan
         """
         if self.get_tokens:
