@@ -254,7 +254,8 @@ def train(cfg, train_idx=None, val_idx=None):
             checkpoint = torch.load(cfg.min_checkpoint_path, weights_only=False)
             model.load_state_dict(checkpoint['model_state_dict'])
             optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-            
+            for param_group in optimizer.param_groups:
+                param_group['lr'] /= 2
         
 
         ################################
