@@ -106,16 +106,19 @@ def train(cfg, train_idx=None, val_idx=None):
     ##################
     # Enregistrement #
     ##################
-    
-    if True:
+
+    """ 
+    if False:
     #Uniquement si on souhaite restaurer un modèle qui était en entrainement    
         checkpoint = torch.load('checkpoints/ATT&DAR_MULTIMODAL_2025-05-21_11-46-39.ptmin', weights_only=False)
         model.load_state_dict(checkpoint['model_state_dict'])
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
         epoch = checkpoint['epoch'] + 1  # Reprend à l'epoch suivante
-    
+    """
+    print ("*********")
     print ("Début training loop")
+    print ("********")
 
     # On interrompt la boucle en fonction du learning rate et du max_epoch. 
     # (cf min_learning_rate) plus haut
@@ -212,16 +215,17 @@ def train(cfg, train_idx=None, val_idx=None):
         # Sauvegarde #
         ##############
 
-        if (val_loss_min == -1) :   
+        if (epoch == 0) :   
+            # 1ere epoch : on n'a pas encore enregistré de modèle
             val_loss_min = epoch_val_loss
-
-        # On récupère le dernier checkpoint en vérifiant que l'on a déjà sauvegardé
-        # un modèle avant
-        try: 
+        else : 
             checkpoint = torch.load(cfg.checkpoint_path, weights_only=False)
-        except FileNotFoundError:
+        
+        # On sauvegarde à intervalles réguliers
+        if (epoch % cfg.checkpoint_interval == 0) :
+            # Si oui, on sauvegarde le modèle    
             checkpoint = {
-                'epoch': 0,
+                'epoch': epoch,
                 'model_state_dict': model.state_dict(),
                 'optimizer_state_dict': optimizer.state_dict(),
                 'scheduler_state_dict': scheduler.state_dict(),
@@ -229,20 +233,6 @@ def train(cfg, train_idx=None, val_idx=None):
             }
             torch.save(checkpoint, cfg.checkpoint_path)
             print ("Modèle enregistré !")
-        # On sauvegarde à intervalles réguliers
-        if (epoch % cfg.checkpoint_interval == 0) :
-            # On verifie si le val_loss est meilleur que le dernier
-            if (epoch == 0 or checkpoint['val_loss'] > epoch_val_loss) :
-                # Si oui, on sauvegarde le modèle    
-                checkpoint = {
-                    'epoch': epoch,
-                    'model_state_dict': model.state_dict(),
-                    'optimizer_state_dict': optimizer.state_dict(),
-                    'scheduler_state_dict': scheduler.state_dict(),
-                    'val_loss': epoch_val_loss,
-                }
-                torch.save(checkpoint, cfg.checkpoint_path)
-                print ("Modèle enregistré !")
 
         if (epoch_val_loss <= val_loss_min) :    
             val_loss_min = epoch_val_loss
@@ -254,16 +244,17 @@ def train(cfg, train_idx=None, val_idx=None):
                 'scheduler_state_dict': scheduler.state_dict(),
                 'val_loss': epoch_val_loss,
             }
-            torch.save(checkpoint, cfg.checkpoint_path+"min")
+            torch.save(checkpoint, cfg.min_checkpoint_path)
             print ("Modèle optimal enregistré !")
 
 
         # Si le modèle est pire que le meilleur, on repart avec le précédent
         if (epoch != 0 and val_loss_min < epoch_val_loss * (1 - cfg.aberration_val_loss)):
             print ("Aberration de la val_loss")
-            checkpoint = torch.load(cfg.checkpoint_path+"min", weights_only=False)
+            checkpoint = torch.load(cfg.min_checkpoint_path, weights_only=False)
             model.load_state_dict(checkpoint['model_state_dict'])
             optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+            
         
 
         ################################
