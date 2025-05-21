@@ -18,6 +18,7 @@ import numpy as np
 
 @hydra.main(config_path="configs", config_name="train")
 def main (cfg):
+    return
     print ("START")
     model = train (cfg)
     #test_model(cfg, model)
