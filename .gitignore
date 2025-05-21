@@ -2,6 +2,7 @@
 dataset/*
 submission.csv
 checkpoints/*.pt
+checkpoints/*.ptmin
 *.DS_Store
 *.ipynb_checkpoints
 utils/check_solution.py
@@ -139,7 +140,4 @@ dmypy.json
 venv/*
 
 # End of https://www.gitignore.io/api/python,visualstudiocode
-assets/sanity/train_target_dist.png
-assets/sanity/val_target_dist.png
-assets/sanity/train_target_dist.png
-assets/sanity/val_target_dist.png
+assets/sanity/*
