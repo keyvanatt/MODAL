@@ -17,7 +17,6 @@ class Dataset(torch.utils.data.Dataset):
         if "views" in info.columns:
             self.targets = info["log1p_views"].values
         
-        
 
         # - ids
         self.ids = info["id"].values
