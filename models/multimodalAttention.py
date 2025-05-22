@@ -37,7 +37,7 @@ class MultiModalAttentionRegressor(nn.Module):
         )
 
         self.pool = nn.AdaptiveAvgPool1d(1)
-        self.project_dim = 256
+        self.project_dim = 512
         self.reg_input_dim = self.project_dim+self.channel_embedding_dim+1
         self.projector = nn.Sequential(
             nn.Linear(self.image_embedding_dim, self.project_dim),
@@ -45,9 +45,12 @@ class MultiModalAttentionRegressor(nn.Module):
             nn.Dropout(self.droupout),
         )
         self.reg_head = nn.Sequential(
-            nn.Linear(self.reg_input_dim, 1),
+            nn.Linear(self.reg_input_dim, self.reg_input_dim//2),
             nn.ReLU(),
-            nn.Dropout(self.droupout)
+            nn.Dropout(self.droupout),
+            nn.Linear(self.reg_input_dim//2, 1),
+            nn.ReLU(),
+            nn.Dropout(self.droupout),
         )
             
         
