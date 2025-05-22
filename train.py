@@ -54,6 +54,7 @@ def train(cfg, train_idx=None, val_idx=None):
     datamodule = hydra.utils.instantiate(cfg.datamodule, train_idx=train_idx, val_idx=val_idx)
     train_loader = datamodule.train_dataloader()
     val_loader = datamodule.val_dataloader()
+    extreme_train_loader = datamodule.extreme_train_dataloader()
     
     # Permet de charger le modèle avec le meilleur validation loss en cas 
     # de remontée du val_loss
@@ -137,7 +138,10 @@ def train(cfg, train_idx=None, val_idx=None):
         # Compte le nombre d'images entraînées pour faire la moyenne pour le train_loss
         num_samples_train = 0
         # Là c'est juste la barre de progression pour la console
-        pbar = tqdm(train_loader, desc=f"Epoch {epoch}", leave=False)
+        if optimizer.param_groups[0]["lr"] > cfg.switch_learning_rate:
+            pbar = tqdm(train_loader, desc=f"Epoch {epoch}", leave=False)
+        else:
+            pbar = tqdm(extreme_train_loader, desc=f"Epoch {epoch} - extreme", leave=False)
         for i, batch in enumerate(pbar):
             # On envoie les images dans le GPU (si dispo)
             batch["image"] = batch["image"].to(device)
@@ -202,33 +206,32 @@ def train(cfg, train_idx=None, val_idx=None):
             batch["channel"] = batch["channel"].to(device)
             batch["year"] = batch["year"].to(device)
             with torch.no_grad():
-                preds = model(batch).squeeze()
-            loss = loss_fn(preds, batch["target"])
-            epoch_val_loss += loss.detach().cpu().numpy() * len(batch["image"])
-            num_samples_val += len(batch["image"])
+                preds = model(batch).view(-1)
+            loss = torch.nn.functional.mse_loss(preds, batch["target"], reduction='none')  # shape: (batch_size,)
             # Collect for scatter plot
             all_targets.append(batch["target"].detach().cpu().numpy())
             all_preds.append(preds.detach().cpu().numpy())
-            all_losses.append(loss.detach().cpu().numpy() * np.ones_like(batch["target"].detach().cpu().numpy()))
+            all_losses.append(loss.detach().cpu().numpy())
         
         # After validation loop, scatter predictions vs target
         all_targets = np.concatenate(all_targets)
         all_preds = np.concatenate(all_preds)
         all_losses = np.concatenate(all_losses)
+        epoch_val_loss = all_losses.mean()
 
         # Plot 1: Predictions vs Target
         plt.figure(figsize=(6, 5))
-        plt.scatter(all_targets, all_preds, alpha=0.5)
+        plt.scatter(all_targets, all_preds, alpha=0.5,c=all_losses, cmap='viridis')
+        plt.plot([all_targets.min(), all_targets.max()], [all_targets.min(), all_targets.max()], 'r--')
         plt.xlabel("Target")
         plt.ylabel("Prediction")
         plt.title("Predictions vs Target (Validation)")
         plt.tight_layout()
         plt.savefig("assets/sanity/val_pred_vs_target.png")
         if logger is not None:
-            logger.log({f"predictions/val_pred_vs_target_epoch_{epoch}": wandb.Image(plt.gcf())})
+            logger.log({f"predictions/val_pred_vs_target_epoch_{epoch:03d}": wandb.Image(plt.gcf())})
         plt.close()
 
-        epoch_val_loss /= num_samples_val
         # On envoie la loss au scheduler pour qu'il puisse influencer le learning rate
         scheduler.step(epoch_val_loss)
         # On récupère le learning rate effectif du modèle avant de l'envoyer à wandb

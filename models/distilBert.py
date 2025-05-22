@@ -11,7 +11,7 @@ class DistilBertEncoder(nn.Module):
             param.requires_grad = False
         if not freeze:
             for param in list(self.model.parameters())[-2:]:
-                param.requires_grad = True
+                param.requires_grad = False
         self.dim = self.model.config.hidden_size
         self.pool = pool
 
@@ -55,4 +55,4 @@ if __name__ == "__main__":
     
     texts = ["Bonjour", "Hello", "Hola"]
     embeddings = model(texts)
-    print(embeddings.shape)  # Should print: (3, 768)
+    print(embeddings.shape) 

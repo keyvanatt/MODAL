@@ -134,12 +134,14 @@ class DataModuleTemporal(DataModule):
         print("Entrainement temporalisé")
         idx_2023 = np.nonzero(np.array(self.full_dataset.year) == 2023)[0]
         idx_2022 = np.nonzero(np.array(self.full_dataset.year) == 2022)[0]
-        selected_2022 = np.random.choice(idx_2022, size=len(idx_2022)//2, replace=False)
+        selected_2022 = np.random.choice(idx_2022, size=len(idx_2022)//2, replace=False,)
         # Ajouter à val_idx
         self.val_idx = np.concatenate([selected_2022, idx_2023])
         self.train_idx = np.setdiff1d(np.arange(len(self.full_dataset)), self.val_idx)
         val_percentage = len(self.val_idx) / len(self.full_dataset) * 100
         print(f"Pourcentage des données utilisées pour la validation : {val_percentage:.2f}%")
+
+        
         
         super().__init__(
             dataset_path,
@@ -168,5 +170,25 @@ class DataModuleTemporal(DataModule):
             self.train_set,
             batch_size=self.batch_size,
             shuffle=not self.sliding_window,
+            num_workers=self.num_workers,
+        )
+    
+    def extreme_train_dataloader(self, threshold=10):
+        # Récupérer les cibles (targets) du train_set
+        targets = np.array([self.full_dataset.targets[i] for i in self.train_set.indices])
+        idx_high = np.where(targets > threshold)[0]
+        idx_low = np.where(targets < threshold)[0]
+
+        # Prendre autant d'indices low que de high, tirés au hasard
+        if len(idx_low) > len(idx_high):
+            idx_low = np.random.choice(idx_low, size=len(idx_high), replace=False)
+
+        extreme_idx = np.concatenate([idx_high, idx_low])
+        extreme_set = Subset(self.train_set, extreme_idx)
+
+        return DataLoader(
+            extreme_set,
+            batch_size=self.batch_size,
+            shuffle=True,
             num_workers=self.num_workers,
         )
