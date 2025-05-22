@@ -34,13 +34,17 @@ def train(cfg, train_idx=None, val_idx=None):
     """
 
     logger = (
-        wandb.init(project="challenge_CSC_43M04_EP", name=cfg.experiment_name)
+        wandb.init(
+            project="challenge_CSC_43M04_EP",
+            name=cfg.experiment_name,
+        )
         if cfg.log
         else None
     )
+
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     # On crée le modèle défini dans train.yaml sur hydra et le to(device) le balance 
-    # sur le cpu s'il existe
+    # sur le cpu s'il existet
     #model = hydra.utils.instantiate(cfg.model.instance).to(device)
     model = MultiModalAttentionRegressor().to(device)
     # On crée l'optimizer défini sur train.yaml
@@ -108,7 +112,7 @@ def train(cfg, train_idx=None, val_idx=None):
     ##################
 
     
-    if True:
+    if False:
     #Uniquement si on souhaite restaurer un modèle qui était en entrainement    
         checkpoint = torch.load('checkpoints/min_ATT&DAR_MULTIMODAL_2025-05-21_16-03-10.pt', weights_only=False)
         model.load_state_dict(checkpoint['model_state_dict'])
@@ -144,6 +148,14 @@ def train(cfg, train_idx=None, val_idx=None):
             # Pass forward
             preds = model(batch).squeeze()
             loss = loss_fn(preds, batch["target"])
+
+            # Log weights, biases, and gradients to wandb
+            if logger is not None:
+                for name, param in model.named_parameters():
+                    if param.requires_grad:
+                        logger.log({f"weights/{name}": wandb.Histogram(param.detach().cpu().numpy())})
+                        if param.grad is not None:
+                            logger.log({f"grads/{name}": wandb.Histogram(param.grad.detach().cpu().numpy())})
             
             # Partie éliminée pour gagner en vitesse 
             # Là on envoit les données a wandb pour qu'il les affiche
@@ -181,6 +193,9 @@ def train(cfg, train_idx=None, val_idx=None):
         epoch_val_loss = 0
         num_samples_val = 0
         model.eval()
+        all_targets = []
+        all_preds = []
+        all_losses = []
         for _, batch in enumerate(val_loader):
             batch["image"] = batch["image"].to(device)
             batch["target"] = batch["target"].to(device).squeeze()
@@ -191,6 +206,28 @@ def train(cfg, train_idx=None, val_idx=None):
             loss = loss_fn(preds, batch["target"])
             epoch_val_loss += loss.detach().cpu().numpy() * len(batch["image"])
             num_samples_val += len(batch["image"])
+            # Collect for scatter plot
+            all_targets.append(batch["target"].detach().cpu().numpy())
+            all_preds.append(preds.detach().cpu().numpy())
+            all_losses.append(loss.detach().cpu().numpy() * np.ones_like(batch["target"].detach().cpu().numpy()))
+        
+        # After validation loop, scatter predictions vs target
+        all_targets = np.concatenate(all_targets)
+        all_preds = np.concatenate(all_preds)
+        all_losses = np.concatenate(all_losses)
+
+        # Plot 1: Predictions vs Target
+        plt.figure(figsize=(6, 5))
+        plt.scatter(all_targets, all_preds, alpha=0.5)
+        plt.xlabel("Target")
+        plt.ylabel("Prediction")
+        plt.title("Predictions vs Target (Validation)")
+        plt.tight_layout()
+        plt.savefig("assets/sanity/val_pred_vs_target.png")
+        if logger is not None:
+            logger.log({f"predictions/val_pred_vs_target_epoch_{epoch}": wandb.Image(plt.gcf())})
+        plt.close()
+
         epoch_val_loss /= num_samples_val
         # On envoie la loss au scheduler pour qu'il puisse influencer le learning rate
         scheduler.step(epoch_val_loss)
