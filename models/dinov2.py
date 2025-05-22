@@ -26,12 +26,13 @@ class DinoV2Finetune(nn.Module):
     def forward(self, x,k=32):
         if self.get_tokens:
             patch_tokens = self.backbone.get_intermediate_layers(x["image"], n=1)[0]
-            scores = patch_tokens.norm(dim=-1)  # (B, N)
+            """scores = patch_tokens.norm(dim=-1)  # (B, N)
             _, idx = scores.topk(k=k, dim=-1)  # on garde les 32 plus informatifs
             # Gather top-k tokens
             idx_expanded = idx.unsqueeze(-1).expand(-1, -1, patch_tokens.size(-1))  # (B, 32, dim)
             x = torch.gather(patch_tokens, 1, idx_expanded)  # (B, 32, dim)
-            #x = torch.stack([patch_tokens[b, idx[b]] for b in range(B)], dim=0)  
+            #x = torch.stack([patch_tokens[b, idx[b]] for b in range(B)], dim=0)"""
+            x = patch_tokens
         else:
             x = self.backbone(x["image"])
         return x
