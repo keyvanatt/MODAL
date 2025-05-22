@@ -37,9 +37,13 @@ class MultiModalAttentionRegressor(nn.Module):
         )
 
         self.pool = nn.AdaptiveAvgPool1d(1)
-
-        self.reg_input_dim = self.image_embedding_dim+self.channel_embedding_dim+1
-
+        self.project_dim = 256
+        self.reg_input_dim = self.project_dim+self.channel_embedding_dim+1
+        self.projector = nn.Sequential(
+            nn.Linear(self.image_embedding_dim, self.project_dim),
+            nn.ReLU(),
+            nn.Dropout(self.droupout),
+        )
         self.reg_head = nn.Sequential(
             nn.Linear(self.reg_input_dim, 1),
             nn.ReLU(),
@@ -77,9 +81,8 @@ class MultiModalAttentionRegressor(nn.Module):
         channel_feat = self.channel_embedding(channel.squeeze(1))  # [B, dim]
         year = year.float()
         year_feat = (year - self.min_year) / (self.max_year - self.min_year)
-
+        x = self.projector(x)  # (batch, project_dim)
         x = torch.cat([x, channel_feat, year_feat], dim=1)
-
         x = self.reg_head(x)  # (batch, 1)
         return x
     
