@@ -53,7 +53,7 @@ def train(cfg, train_idx=None, val_idx=None):
     
     # Permet de charger le modèle avec le meilleur validation loss en cas 
     # de remontée du val_loss
-    val_loss_min = -1
+    val_loss_min = np.inf
 
 
     # Le scheduler permet de réduire le learning rate en même temps que la loss du validation set diminue
@@ -107,15 +107,15 @@ def train(cfg, train_idx=None, val_idx=None):
     # Enregistrement #
     ##################
 
-    """ 
-    if False:
+    
+    if True:
     #Uniquement si on souhaite restaurer un modèle qui était en entrainement    
-        checkpoint = torch.load('checkpoints/ATT&DAR_MULTIMODAL_2025-05-21_11-46-39.ptmin', weights_only=False)
+        checkpoint = torch.load('checkpoints/min_ATT&DAR_MULTIMODAL_2025-05-21_16-03-10.pt', weights_only=False)
         model.load_state_dict(checkpoint['model_state_dict'])
-        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-        scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
+        #optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        #scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
         epoch = checkpoint['epoch'] + 1  # Reprend à l'epoch suivante
-    """
+    
     print ("*********")
     print ("Début training loop")
     print ("********")
@@ -159,7 +159,7 @@ def train(cfg, train_idx=None, val_idx=None):
             epoch_train_loss += loss.detach().cpu().numpy() * len(batch["image"])
             num_samples_train += len(batch["image"])
             # Affiche la progression dans la console
-            pbar.set_postfix({"train/loss_step": loss.detach().cpu().numpy()})
+            pbar.set_postfix({"train/loss_step": loss.detach().cpu().numpy(), "learning_rate": optimizer.param_groups[0]["lr"]})
         epoch_train_loss /= num_samples_train
         # Pareil, on envoit a wandb
         (
@@ -218,8 +218,6 @@ def train(cfg, train_idx=None, val_idx=None):
         if (epoch == 0) :   
             # 1ere epoch : on n'a pas encore enregistré de modèle
             val_loss_min = epoch_val_loss
-        else : 
-            checkpoint = torch.load(cfg.checkpoint_path, weights_only=False)
         
         # On sauvegarde à intervalles réguliers
         if (epoch % cfg.checkpoint_interval == 0) :
@@ -254,7 +252,8 @@ def train(cfg, train_idx=None, val_idx=None):
             checkpoint = torch.load(cfg.min_checkpoint_path, weights_only=False)
             model.load_state_dict(checkpoint['model_state_dict'])
             optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-            
+            for param_group in optimizer.param_groups:
+                param_group['lr'] *= cfg.factor_learning_rate
         
 
         ################################
