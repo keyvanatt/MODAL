@@ -173,17 +173,20 @@ class DataModuleTemporal(DataModule):
             num_workers=self.num_workers,
         )
     
-    def extreme_train_dataloader(self, threshold=10):
+    def extreme_train_dataloader(self, threshold=10, proportion=0.8):
         # Récupérer les cibles (targets) du train_set
         targets = np.array([self.full_dataset.targets[i] for i in self.train_set.indices])
         idx_high = np.where(targets > threshold)[0]
         idx_low = np.where(targets < threshold)[0]
 
-        # Prendre autant d'indices low que de high, tirés au hasard
-        if len(idx_low) > len(idx_high):
-            idx_low = np.random.choice(idx_low, size=len(idx_high), replace=False)
+        # Sélectionner une proportion des indices faibles (idx_low)
+        n_low = int((1-proportion)/proportion * len(idx_high))
+        if n_low < len(idx_low):
+            selected_idx_low = np.random.choice(idx_low, size=n_low, replace=False)
+        else:
+            selected_idx_low = idx_low
 
-        extreme_idx = np.concatenate([idx_high, idx_low])
+        extreme_idx = np.concatenate([idx_high, selected_idx_low])
         extreme_set = Subset(self.train_set, extreme_idx)
 
         return DataLoader(
