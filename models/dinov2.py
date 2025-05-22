@@ -8,9 +8,13 @@ class DinoV2Finetune(nn.Module):
         self.backbone = torch.hub.load("facebookresearch/dinov2", "dinov2_vitb14_reg")
         self.backbone.head = nn.Identity()
         self.dim = self.backbone.norm.normalized_shape[0]
+        for name, param in list(self.backbone.named_parameters()):
+                param.requires_grad = False
         if not frozen:
             for name, param in list(self.backbone.named_parameters())[-2:]:
                 param.requires_grad = True
+            
+                
 
         self.get_tokens = get_tokens
 
@@ -18,9 +22,6 @@ class DinoV2Finetune(nn.Module):
         # Matrice de projection LSH (fixée pour tout le modèle)
         self.register_buffer("lsh_proj", torch.randn(self.dim, self.lsh_bits))
 
-
-    """
-    Précédente version sans LSH
 
     def forward(self, x,k=32):
         if self.get_tokens:
@@ -34,9 +35,8 @@ class DinoV2Finetune(nn.Module):
         else:
             x = self.backbone(x["image"])
         return x
-    """
-
-    def forward(self, x, k=32):
+    
+    def forward_lsh(self, x, k=32):
         """
         Implémente la projection LSH à partir du code de Kayvan
         """
