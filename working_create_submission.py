@@ -21,7 +21,7 @@ def test_model (cfg) :
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     model = MultiModalAttentionRegressor()
-    checkpoint = torch.load("/users/eleves-b/2023/keyvan.attarian/MODAL/checkpoints/ATT&DAR_MULTIMODAL_2025-05-21_01-13-34.ptmin",weights_only=False)["model_state_dict"]
+    checkpoint = torch.load("checkpoints/ATT&DAR_MULTIMODAL_2025-05-22_13-15-01.pt",weights_only=False)["model_state_dict"]
     print(f"Loading model from checkpoint: {cfg.checkpoint_path}")
     model.load_state_dict(checkpoint, strict=False)
     model.to(device)
@@ -55,6 +55,28 @@ def test_model (cfg) :
         writer.writerows(resultats)
 
 
+    print("Results saved to resultat.csv")
+    print("Computing val loss...")
+    # Compute validation loss on validation set
+    val_loader = datamodule.val_dataloader()
+    total_loss = 0.0
+    total_samples = 0
+    criterion = torch.nn.MSELoss()
+
+    with torch.no_grad():
+        for batch in val_loader:
+            batch["image"] = batch["image"].to(device)
+            batch["channel"] = batch["channel"].to(device)
+            batch["year"] = batch["year"].to(device)
+            labels = batch["target"].to(device)
+            outputs = model(batch).view(-1)
+            loss = criterion(outputs, labels)
+            batch_size = labels.size(0)
+            total_loss += loss.item() * batch_size
+            total_samples += batch_size
+
+    avg_loss = total_loss / total_samples if total_samples > 0 else 0
+    print(f"Validation loss (MSE): {avg_loss:.4f}")
 
 if __name__ == "__main__":
     main ()
