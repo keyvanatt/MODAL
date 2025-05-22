@@ -42,7 +42,9 @@ def test_model (cfg) :
             batch["year"] = batch["year"].to(device)
             with torch.no_grad():
                 out_data = model(batch)
-                out_data = torch.expm1(out_data)
+                #out_data = torch.expm1(out_data)
+                # J'ai passé les log1views entre 0 et 1
+                out_data = torch.expm1(19.063324786290192 * out_data)
             resultats.append({"ID" : batch["id"].detach().cpu().numpy()[0], "TARGET" : out_data.detach().cpu().numpy()[0][0]})
             
     

@@ -37,10 +37,10 @@ class MultiModalAttentionRegressor(nn.Module):
         )
 
         self.pool = nn.AdaptiveAvgPool1d(1)
-        self.project_dim = 256
+        self.project_dim = 512
         self.reg_input_dim = self.project_dim+self.channel_embedding_dim+1
         self.projector = nn.Sequential(
-            nn.Linear(self.image_embedding_dim, self.project_dim),
+            nn.Linear(2 * self.image_embedding_dim, self.project_dim),
             nn.ReLU(),
             nn.Dropout(self.droupout),
         )
@@ -74,14 +74,22 @@ class MultiModalAttentionRegressor(nn.Module):
         # text_tokens: (batch, seq_len_text, embed_dim) -> Q
         # image_tokens: (batch, seq_len_img, embed_dim) -> K, V
         # nn.MultiheadAttention expects (batch, seq, embed_dim) with batch_first=True
-        attn_output, _ = self.cross_attn(query=text_tokens, key=image_tokens, value=image_tokens)
-        x = attn_output.transpose(1, 2)  # (batch, embed_dim, seq_len_text)
-        x = self.pool(x).squeeze(-1)  # (batch, embed_dim)
+        attn_output_txt, _ = self.cross_attn(query=text_tokens, key=image_tokens, value=image_tokens)
+        attn_output_img, _ = self.cross_attn(query=image_tokens, key=text_tokens, value=text_tokens)
+        # Concaténation sur la dimension des features (embed_dim)
+        attn_output_txt_pooled = attn_output_txt.mean(dim=1)  # (batch, embed_dim)
+        attn_output_img_pooled = attn_output_img.mean(dim=1)  # (batch, embed_dim)
+        
+        attn_output = torch.cat([attn_output_txt_pooled, attn_output_img_pooled], dim=-1)  # (batch, seq_len, 2*embed_dim)
+        #x = attn_output.transpose(1, 2)  # (batch, embed_dim, seq_len_text)
+        #x = self.pool(x).squeeze(-1)  # (batch, embed_dim)
+        
+        x = self.projector(attn_output)  # (batch, project_dim)
+        
 
         channel_feat = self.channel_embedding(channel.squeeze(1))  # [B, dim]
         year = year.float()
         year_feat = (year - self.min_year) / (self.max_year - self.min_year)
-        x = self.projector(x)  # (batch, project_dim)
         x = torch.cat([x, channel_feat, year_feat], dim=1)
         x = self.reg_head(x)  # (batch, 1)
         return x
