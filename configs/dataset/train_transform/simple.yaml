@@ -1,6 +1,6 @@
 _target_: torchvision.transforms.Compose
 transforms:
-  - _target_: torchvision.transforms.Resize
+  - _target_: torchvision.transforms.RandomResizedCrop
     size: [112, 112]
   - _target_: torchvision.transforms.RandomHorizontalFlip
   - _target_: torchvision.transforms.ToTensor

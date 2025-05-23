@@ -52,7 +52,7 @@ def train(cfg, train_idx=None, val_idx=None):
     loss_fn = hydra.utils.instantiate(cfg.loss_fn)
     # Idem et le datamodule permet globalement de charger les images et les fournir au modèle
     datamodule = hydra.utils.instantiate(cfg.datamodule, train_idx=train_idx, val_idx=val_idx)
-    train_loader = datamodule.train_dataloader()
+    train_loader = datamodule.train_dataloader_dynamique()
     val_loader = datamodule.val_dataloader()
     extreme_train_loader = datamodule.extreme_train_dataloader()
     
@@ -133,6 +133,14 @@ def train(cfg, train_idx=None, val_idx=None):
         # Training loop #
         #################
 
+
+
+        datamodule.train_dataloader_dynamique(epoch = epoch)
+    
+    
+
+
+    
         model.train()
         epoch_train_loss = 0
         # Compte le nombre d'images entraînées pour faire la moyenne pour le train_loss

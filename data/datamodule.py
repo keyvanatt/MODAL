@@ -1,4 +1,5 @@
 from torch.utils.data import DataLoader
+from torchvision import transforms
 
 from data.dataset import Dataset
 
@@ -83,7 +84,7 @@ class DataModule:
             shuffle=True,
             num_workers=self.num_workers,
         )
-
+    
     def val_dataloader(self):
         """Validation dataloader."""
         return DataLoader(
@@ -120,7 +121,7 @@ class DataModuleTemporal(DataModule):
         taille_val,
         train_idx=None,
         val_idx=None,
-        sliding_window=False
+        sliding_window=False,
     ):
         if train_idx is not None or val_idx is not None:
             raise ValueError("train_idx and val_idx should not be provided for DataModuleTemporal.")
@@ -136,13 +137,21 @@ class DataModuleTemporal(DataModule):
         idx_2022 = np.nonzero(np.array(self.full_dataset.year) == 2022)[0]
         selected_2022 = np.random.choice(idx_2022, size=len(idx_2022)//2, replace=False,)
         # Ajouter à val_idx
-        self.val_idx = np.concatenate([selected_2022, idx_2023])
-        self.train_idx = np.setdiff1d(np.arange(len(self.full_dataset)), self.val_idx)
+        # Keyvan, je trouve pas ca cohérent de prendre un validation set aussi spécifique
+        #self.val_idx = np.concatenate([selected_2022, idx_2023])
+        #self.train_idx = np.setdiff1d(np.arange(len(self.full_dataset)), self.val_idx)
+
+        val_size = int(0.2 * len(self.full_dataset))  # 20% pour validation, adapte si besoin
+        all_indices = np.arange(len(self.full_dataset))
+        np.random.shuffle(all_indices)
+        self.val_idx = all_indices[:val_size]
+        self.train_idx = all_indices[val_size:]
+
         val_percentage = len(self.val_idx) / len(self.full_dataset) * 100
         print(f"Pourcentage des données utilisées pour la validation : {val_percentage:.2f}%")
 
-        
-        
+        self.anneeMin = -1
+
         super().__init__(
             dataset_path,
             train_transform,
@@ -195,3 +204,35 @@ class DataModuleTemporal(DataModule):
             shuffle=True,
             num_workers=self.num_workers,
         )
+    
+    
+    def train_dataloader_dynamique(self, epoch = 0):
+        """Train dataloader dynamique. Change la fenêtre sur chaque epoch"""
+        
+        if (epoch % 5 < (2023 - 2011)):
+            anneeMin = 2011 + epoch // 5
+        else:
+            anneeMin = 2022
+        
+        if (self.anneeMin == -1 or self.anneeMin != anneeMin):
+            print ("******")
+            print ("DATAMODULE DYNAMIQUE")
+            print ("******")
+
+            print ("Nouvelle année minimum : ", anneeMin)
+        
+            new_train_idx = []
+
+            for idx in self.train_idx:
+                if self.full_dataset[idx]["year"] >= anneeMin:
+                    new_train_idx.append(idx)
+            
+            self.train_idx = new_train_idx
+
+        self.anneeMin = anneeMin
+
+        return (self.train_dataloader ())
+        
+
+
+
