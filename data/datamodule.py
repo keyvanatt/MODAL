@@ -182,7 +182,7 @@ class DataModuleTemporal(DataModule):
             num_workers=self.num_workers,
         )
     
-    def extreme_train_dataloader(self, threshold=0.5, proportion=0.8):
+    def extreme_train_dataloader(self, threshold=10, proportion=0.8):
         # Récupérer les cibles (targets) du train_set
         targets = np.array([self.full_dataset.targets[i] for i in self.train_set.indices])
         idx_high = np.where(targets > threshold)[0]
