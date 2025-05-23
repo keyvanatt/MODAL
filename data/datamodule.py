@@ -209,7 +209,7 @@ class DataModuleTemporal(DataModule):
     def train_dataloader_dynamique(self, epoch = 0):
         """Train dataloader dynamique. Change la fenêtre sur chaque epoch"""
         
-        if (epoch % 5 < (2023 - 2011)):
+        if (epoch // 5 < (2023 - 2011)):
             anneeMin = 2011 + epoch // 5
         else:
             anneeMin = 2022

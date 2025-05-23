@@ -135,10 +135,7 @@ def train(cfg, train_idx=None, val_idx=None):
 
 
 
-        datamodule.train_dataloader_dynamique(epoch = epoch)
-    
-    
-
+        train_loader = datamodule.train_dataloader_dynamique(epoch = epoch)
 
     
         model.train()
