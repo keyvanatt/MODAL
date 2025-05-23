@@ -6,6 +6,7 @@ checkpoints/*.ptmin
 *.DS_Store
 *.ipynb_checkpoints
 utils/check_solution.py
+resultat.csv
 
 *.log
 *.pyc
