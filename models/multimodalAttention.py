@@ -45,9 +45,12 @@ class MultiModalAttentionRegressor(nn.Module):
             nn.Dropout(self.droupout),
         )
         self.reg_head = nn.Sequential(
-            nn.Linear(self.reg_input_dim, 1),
+            nn.Linear(self.reg_input_dim, self.reg_input_dim//2),
             nn.ReLU(),
-            nn.Dropout(self.droupout)
+            nn.Dropout(self.droupout),
+            nn.Linear(self.reg_input_dim//2, 1),
+            nn.ReLU(),
+            nn.Dropout(self.droupout),
         )
             
         
