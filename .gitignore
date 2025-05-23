@@ -1,12 +1,11 @@
-# -- custom 
-dataset/*
+dataset/test/
+dataset/train_val/
 submission.csv
 checkpoints/*.pt
 checkpoints/*.ptmin
 *.DS_Store
 *.ipynb_checkpoints
 utils/check_solution.py
-# -- end custom
 
 *.log
 *.pyc
