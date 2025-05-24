@@ -56,3 +56,24 @@ class WEIGHTED_MSELoss(nn.Module):
         loss = torch.mean(weights * (y_pred - y_true) ** 2)
 
         return loss
+    
+
+class HuberLoss(nn.Module):
+    def __init__(self, delta=1.0):
+        super(HuberLoss, self).__init__()
+        self.delta = delta
+
+    def forward(self, y_pred, y_true):
+        # Ensure the predictions and targets are non-negative and float type
+        y_pred = torch.clamp(y_pred, min=0).to(torch.float32)
+        y_true = torch.clamp(y_true, min=0).to(torch.float32)
+
+        diff = y_pred - y_true
+        abs_diff = torch.abs(diff)
+
+        # Compute Huber loss (all operations are differentiable)
+        loss = torch.where(abs_diff < self.delta,
+                           0.5 * diff ** 2,
+                           self.delta * (abs_diff - 0.5 * self.delta))
+
+        return loss.mean()
