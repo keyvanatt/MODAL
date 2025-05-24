@@ -205,6 +205,34 @@ class DataModuleTemporal(DataModule):
             num_workers=self.num_workers,
         )
     
+    def train_high_dataloader(self, threshold=10):
+        """Train dataloader with high targets only."""
+        # Récupérer les cibles (targets) du train_set
+        targets = np.array([self.full_dataset.targets[i] for i in self.train_set.indices])
+        idx_high = np.where(targets > threshold)[0]
+
+        high_set = Subset(self.train_set, idx_high)
+
+        return DataLoader(
+            high_set,
+            batch_size=self.batch_size,
+            shuffle=True,
+            num_workers=self.num_workers,
+        )
+    def train_low_dataloader(self, threshold=10):
+        """Train dataloader with low targets only."""
+        # Récupérer les cibles (targets) du train_set
+        targets = np.array([self.full_dataset.targets[i] for i in self.train_set.indices])
+        idx_low = np.where(targets < threshold)[0]
+
+        low_set = Subset(self.train_set, idx_low)
+
+        return DataLoader(
+            low_set,
+            batch_size=self.batch_size,
+            shuffle=True,
+            num_workers=self.num_workers,
+        )
     
     def train_dataloader_dynamique(self, epoch = 0):
         """Train dataloader dynamique. Change la fenêtre sur chaque epoch"""
