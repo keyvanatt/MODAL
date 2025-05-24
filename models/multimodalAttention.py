@@ -43,15 +43,13 @@ class MultiModalAttentionRegressor(nn.Module):
             nn.Linear(2 * self.image_embedding_dim, self.project_dim),
             nn.ReLU(),
             nn.Dropout(self.droupout),
+            
         )
         self.reg_head = nn.Sequential(
-            nn.Linear(self.reg_input_dim, self.reg_input_dim//2),
-            nn.ReLU(),
-            nn.Dropout(self.droupout),
-            nn.Linear(self.reg_input_dim//2, 1),
-            nn.ReLU(),
+            nn.Linear(self.reg_input_dim, 1),
             nn.Dropout(self.droupout),
         )
+
             
         
 
@@ -95,6 +93,7 @@ class MultiModalAttentionRegressor(nn.Module):
         year_feat = (year - self.min_year) / (self.max_year - self.min_year)
         x = torch.cat([x, channel_feat, year_feat], dim=1)
         x = self.reg_head(x)  # (batch, 1)
+        x = nn.functional.sigmoid(x)*20 # Scale to the range [0, 20]
         return x
     
 if __name__ == "__main__":
