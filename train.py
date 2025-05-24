@@ -51,8 +51,10 @@ def train(cfg, train_idx=None, val_idx=None):
     optimizer = hydra.utils.instantiate(cfg.optim, params=model.parameters())
     loss_fn = hydra.utils.instantiate(cfg.loss_fn)
     # Idem et le datamodule permet globalement de charger les images et les fournir au modèle
-    datamodule = hydra.utils.instantiate(cfg.datamodule, train_idx=train_idx, val_idx=val_idx)
-    train_loader = datamodule.train_dataloader_dynamique()
+    datamodule = hydra.utils.instantiate(cfg.datamodule, 
+    
+    train_idx=train_idx, val_idx=val_idx)
+    train_loader = datamodule.train_high_dataloader()
     val_loader = datamodule.val_dataloader()
     extreme_train_loader = datamodule.extreme_train_dataloader()
     
@@ -133,17 +135,13 @@ def train(cfg, train_idx=None, val_idx=None):
         # Training loop #
         #################
 
-
-
-        train_loader = datamodule.train_dataloader_dynamique(epoch = epoch)
-
     
         model.train()
         epoch_train_loss = 0
         # Compte le nombre d'images entraînées pour faire la moyenne pour le train_loss
         num_samples_train = 0
         # Là c'est juste la barre de progression pour la console
-        if optimizer.param_groups[0]["lr"] > cfg.switch_learning_rate:
+        if  epoch > 5:
             pbar = tqdm(train_loader, desc=f"Epoch {epoch}", leave=False)
         else:
             pbar = tqdm(extreme_train_loader, desc=f"Epoch {epoch} - extreme", leave=False)
@@ -223,6 +221,8 @@ def train(cfg, train_idx=None, val_idx=None):
         all_preds = np.concatenate(all_preds)
         all_losses = np.concatenate(all_losses)
         epoch_val_loss = all_losses.mean()
+        high_val_loss = all_losses[all_losses > 10].mean() if len(all_losses[all_losses > 10]) > 0 else 0
+        low_val_loss = all_losses[all_losses < 10].mean() if len(all_losses[all_losses < 10]) > 0 else 0
 
         # Plot 1: Predictions vs Target
         plt.figure(figsize=(6, 5))
@@ -234,7 +234,7 @@ def train(cfg, train_idx=None, val_idx=None):
         plt.tight_layout()
         plt.savefig("assets/sanity/val_pred_vs_target.png")
         if logger is not None:
-            logger.log({f"predictions/val_pred_vs_target_epoch_{epoch:03d}": wandb.Image(plt.gcf())})
+            logger.log({f"predictions/val_pred_vs_target": wandb.Image(plt.gcf()),"epoch": epoch})
         plt.close()
 
         # On envoie la loss au scheduler pour qu'il puisse influencer le learning rate
@@ -245,6 +245,8 @@ def train(cfg, train_idx=None, val_idx=None):
         # On envoie tout à wandb
         val_metrics["val/loss_epoch"] = epoch_val_loss
         val_metrics["learning_rate"] = current_lr
+        val_metrics["val/high_loss"] = high_val_loss
+        val_metrics["val/low_loss"] = low_val_loss
         (
             logger.log(
                 {
@@ -334,22 +336,6 @@ def train(cfg, train_idx=None, val_idx=None):
     return (model)
 
 
-def test_model (cfg, model) :
-    """
-    Non fonctionnel pour l'instant cf le fichier séparé
-    L'objectif ici est de tester le modèle sur le dataset test et de calculer l'accuracy
-    du modèle
-    """
-
-    model.eval()
-
-    datamodule = hydra.utils.instantiate(cfg.datamodule)
-    test_loader = datamodule.test_dataloader()
-
-    with torch.no_grad():
-        out_data = model(test_loader[0][1])
-    
-    print (out_data)
 
 
 
