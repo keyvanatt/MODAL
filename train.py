@@ -141,10 +141,7 @@ def train(cfg, train_idx=None, val_idx=None):
         # Compte le nombre d'images entraînées pour faire la moyenne pour le train_loss
         num_samples_train = 0
         # Là c'est juste la barre de progression pour la console
-        if  epoch > 5:
-            pbar = tqdm(train_loader, desc=f"Epoch {epoch}", leave=False)
-        else:
-            pbar = tqdm(extreme_train_loader, desc=f"Epoch {epoch} - extreme", leave=False)
+        pbar = tqdm(train_loader, desc=f"Epoch {epoch}", leave=False)
         for i, batch in enumerate(pbar):
             # On envoie les images dans le GPU (si dispo)
             batch["image"] = batch["image"].to(device)
@@ -235,6 +232,19 @@ def train(cfg, train_idx=None, val_idx=None):
         plt.savefig("assets/sanity/val_pred_vs_target.png")
         if logger is not None:
             logger.log({f"predictions/val_pred_vs_target": wandb.Image(plt.gcf()),"epoch": epoch})
+        plt.close()
+
+        # Plot 2: Loss vs Target
+        plt.figure(figsize=(6, 5))
+        sc = plt.scatter(all_targets, all_losses, alpha=0.5, c=all_preds, cmap='viridis')
+        plt.xlabel("Target")
+        plt.ylabel("MSE Loss")
+        plt.title("Loss vs Target (Validation)")
+        plt.colorbar(sc, label="Prediction")
+        plt.tight_layout()
+        plt.savefig("assets/sanity/val_loss_vs_target.png")
+        if logger is not None:
+            logger.log({f"predictions/val_loss_vs_target": wandb.Image(plt.gcf()), "epoch": epoch})
         plt.close()
 
         # On envoie la loss au scheduler pour qu'il puisse influencer le learning rate
