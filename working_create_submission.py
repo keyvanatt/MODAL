@@ -21,10 +21,13 @@ def test_model (cfg) :
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     model = MultiModalAttentionRegressor()
-    checkpoint = torch.load("checkpoints/ATT&DAR_MULTIMODAL_2025-05-22_13-15-01.pt",weights_only=False)["model_state_dict"]
+    checkpoint = torch.load("checkpoints/MIN_ATT&DAR_MULTIMODAL_2025-05-25_10-35-48.pt",weights_only=False)["model_state_dict"]
     print(f"Loading model from checkpoint: {cfg.checkpoint_path}")
     model.load_state_dict(checkpoint, strict=False)
     model.to(device)
+
+    print("Model architecture:")
+    print(model)
 
 
     model.eval()
@@ -48,8 +51,6 @@ def test_model (cfg) :
             resultats.append({"ID" : batch["id"].detach().cpu().numpy()[0], "TARGET" : out_data.detach().cpu().numpy()[0][0]})
             
     
-    print (resultats)
-
     with open('resultat.csv', 'w', newline='') as csvfile:
         fieldnames = ['ID', 'TARGET']
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
