@@ -5,12 +5,14 @@ import os
 
 
 class LlamaTextEncoder(nn.Module):
-    def __init__(self, model_name: str = "meta-llama/Llama-2-7b-hf", pool: bool = False, freeze: bool = True):
+    def __init__(self, model_name: str = "meta-llama/Llama-2-7b-hf", pool: bool = False, freeze: bool = True, use_fp16: bool = True):
         super().__init__()
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
         if self.tokenizer.pad_token is None:
             self.tokenizer.pad_token = self.tokenizer.eos_token  # Use EOS as PAD if no pad token exists
         self.model = AutoModelForCausalLM.from_pretrained(model_name)
+        if use_fp16:
+            self.model = self.model.half()
         for param in self.model.parameters():
             param.requires_grad = False
         self.hidden_size = self.model.config.hidden_size
