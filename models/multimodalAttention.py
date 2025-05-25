@@ -2,17 +2,19 @@ import torch
 import torch.nn as nn
 from models.dinov2 import DinoV2Finetune
 from models.distilBert import DistilBertEncoder
+import os
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
-class MultiModalAttentionRegressor(nn.Module):
+class MultiModalAttention(nn.Module):
     def __init__(self, text_model_name='distilbert-base-multilingual-cased', freeze_dino=True):
         super().__init__()
 
         # --- Image encoder: DINOv2
-        self.image_encoder = DinoV2Finetune(frozen=freeze_dino, regression=False,get_tokens=True)
+        self.image_encoder = DinoV2Finetune(frozen=True, regression=False,get_tokens=True)
         self.image_embedding_dim = self.image_encoder.dim
 
         # --- Text encoder (DistilBERT)
-        self.text_encoder = DistilBertEncoder(model_name=text_model_name, pool=False)
+        self.text_encoder = DistilBertEncoder(model_name=text_model_name, pool=False,freeze=True)
         self.text_embedding_dim = self.text_encoder.dim
 
         assert self.image_embedding_dim == self.text_embedding_dim, "Image and text embedding dimensions must match."
@@ -45,12 +47,8 @@ class MultiModalAttentionRegressor(nn.Module):
             nn.Dropout(self.droupout),
             
         )
-        self.reg_head = nn.Sequential(
-            nn.Linear(self.reg_input_dim, 1),
-            nn.Dropout(self.droupout),
-        )
-
-            
+        self.reg_head = None     
+        self.activation = None
         
 
         print("shape of image encoder: ", self.image_embedding_dim)
@@ -93,8 +91,39 @@ class MultiModalAttentionRegressor(nn.Module):
         year_feat = (year - self.min_year) / (self.max_year - self.min_year)
         x = torch.cat([x, channel_feat, year_feat], dim=1)
         x = self.reg_head(x)  # (batch, 1)
-        x = nn.functional.sigmoid(x)*20 # Scale to the range [0, 20]
+        x = self.activation(x)
         return x
+
+class MultiModalAttentionRegressor(MultiModalAttention):
+    def __init__(self, text_model_name='distilbert-base-multilingual-cased', freeze_dino=True):
+        super().__init__(text_model_name=text_model_name, freeze_dino=freeze_dino)
+        self.reg_head = nn.Sequential(
+            nn.Linear(self.reg_input_dim, 1),
+            nn.Dropout(self.droupout),
+        )
+        self.activation = lambda x : torch.functional.Sigmoid(x)*20
+
+
+class MultiModalAttentionClassifier(MultiModalAttention):
+    def __init__(self, text_model_name='distilbert-base-multilingual-cased', freeze_dino=True,classification_dim=7):
+        super().__init__(text_model_name=text_model_name, freeze_dino=freeze_dino)
+        self.classification_dim = classification_dim
+        self.reg_head = nn.Sequential(
+            nn.Linear(self.reg_input_dim, self.classification_dim),
+            nn.Dropout(self.droupout),
+        )
+        self.activation = nn.Softmax(dim=1)  # Softmax for classification
+
+class MultiModalAttentionMixed(MultiModalAttention):
+    def __init__(self, text_model_name='distilbert-base-multilingual-cased', freeze_dino=True, classification_dim=7):
+        self.regressor = MultiModalAttentionRegressor(text_model_name=text_model_name, freeze_dino=freeze_dino)
+        self.classifier = MultiModalAttentionClassifier(text_model_name=text_model_name, freeze_dino=freeze_dino, classification_dim=classification_dim)
+        self.classification_dim = classification_dim
+    
+    def forward(self, x):
+        reg_output = self.regressor(x)
+        class_output = self.classifier(x)
+        
     
 if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -116,3 +145,4 @@ if __name__ == "__main__":
     
     embeddings = model(x)
     print(embeddings.shape)  # Should print: (2, 1)
+
