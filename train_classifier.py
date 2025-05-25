@@ -46,7 +46,7 @@ def train(cfg, train_idx=None, val_idx=None):
     # On crée le modèle défini dans train.yaml sur hydra et le to(device) le balance 
     # sur le cpu s'il existet
     #model = hydra.utils.instantiate(cfg.model.instance).to(device)
-    model = MultiModalAttentionClassifier().to(device)
+    model = MultiModalAttentionClassifier(classification_dim=len(categories_df)).to(device)
     # On crée l'optimizer défini sur train.yaml
     optimizer = hydra.utils.instantiate(cfg.optim, params=model.parameters())
     loss_fn = torch.nn.CrossEntropyLoss()
@@ -207,17 +207,25 @@ def train(cfg, train_idx=None, val_idx=None):
             batch["target"] = batch["target"].to(device).squeeze()
             batch["channel"] = batch["channel"].to(device)
             batch["year"] = batch["year"].to(device)
+            batch["class_target"] = batch["class_target"].to(device).squeeze()
             with torch.no_grad():
                 preds = model(batch)
-                num_pred = torch.argmax(preds, dim=1)  # For classification, get the predicted class
-                num_pred = categories_df["avg_log1p_views"].values[num_pred].reshape(-1, 1)  # Convert to tensor and reshape
+            num_pred = torch.argmax(preds, dim=1)  # For classification, get the predicted class
+            num_pred = categories_df["avg_log1p_views"].values[num_pred.cpu().numpy()]  # Convert to tensor and reshape
+            num_pred = torch.tensor(num_pred, device=device, dtype=torch.float32)  # Convert to tensor and move to device
             loss = torch.nn.functional.mse_loss(num_pred, batch["target"], reduction='none')  # shape: (batch_size,)
-            train_loss = loss_fn(preds, batch["target"], reduction='none')  # shape: (batch_size,)
+            train_loss = torch.nn.functional.cross_entropy(preds, batch["class_target"], reduction='none')  # shape: (batch_size,)
             # Collect for scatter plot
             all_targets.append(batch["target"].detach().cpu().numpy())
-            all_preds.append(preds.detach().cpu().numpy())
-            all_losses.append(loss.detach().cpu().numpy())
+            all_preds.append(num_pred.detach().cpu().numpy())
+            all_losses.append(loss.detach().cpu().numpy().squeeze())
             all_train_losses.append(train_loss.detach().cpu().numpy())
+            print("preds shape:", preds.shape)
+            print("num_pred shape:", num_pred.shape)
+            print("batch['target'] shape:", batch["target"].shape)
+            print("batch['class_target'] shape:", batch["class_target"].shape)
+            print("loss shape:", loss.shape)
+            print("train_loss shape:", train_loss.shape)
         
         # After validation loop, scatter predictions vs target
         all_targets = np.concatenate(all_targets)

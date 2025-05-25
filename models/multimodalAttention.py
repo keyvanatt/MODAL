@@ -114,6 +114,7 @@ class MultiModalAttentionClassifier(MultiModalAttention):
             nn.Dropout(self.droupout),
         )
         self.activation = nn.Softmax(dim=1)  # Softmax for classification
+        print("Nombre de catégories : ", self.classification_dim)
 
 class MultiModalAttentionMixed(MultiModalAttention):
     def __init__(self, text_model_name='distilbert-base-multilingual-cased', freeze_dino=True, weights = [0.5, 0.5]):
