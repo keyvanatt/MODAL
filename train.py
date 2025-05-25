@@ -54,7 +54,7 @@ def train(cfg, train_idx=None, val_idx=None):
     datamodule = hydra.utils.instantiate(cfg.datamodule, 
     
     train_idx=train_idx, val_idx=val_idx)
-    train_loader = datamodule.train_high_dataloader()
+    train_loader = datamodule.train_dataloader()
     val_loader = datamodule.val_dataloader()
     extreme_train_loader = datamodule.extreme_train_dataloader()
     
@@ -117,10 +117,10 @@ def train(cfg, train_idx=None, val_idx=None):
     
     if False:
     #Uniquement si on souhaite restaurer un modèle qui était en entrainement    
-        checkpoint = torch.load('checkpoints/min_ATT&DAR_MULTIMODAL_2025-05-21_16-03-10.pt', weights_only=False)
+        checkpoint = torch.load('checkpoints/MIN_ATT&DAR_MULTIMODAL_2025-05-24_23-37-11.pt', weights_only=False)
         model.load_state_dict(checkpoint['model_state_dict'])
-        #optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-        #scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
+        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
         epoch = checkpoint['epoch'] + 1  # Reprend à l'epoch suivante
     
     print ("*********")
@@ -200,6 +200,7 @@ def train(cfg, train_idx=None, val_idx=None):
         all_targets = []
         all_preds = []
         all_losses = []
+        all_train_losses = []
         for _, batch in enumerate(val_loader):
             batch["image"] = batch["image"].to(device)
             batch["target"] = batch["target"].to(device).squeeze()
@@ -208,15 +209,18 @@ def train(cfg, train_idx=None, val_idx=None):
             with torch.no_grad():
                 preds = model(batch).view(-1)
             loss = torch.nn.functional.mse_loss(preds, batch["target"], reduction='none')  # shape: (batch_size,)
+            train_loss = loss_fn(preds, batch["target"], reduction='none')  # shape: (batch_size,)
             # Collect for scatter plot
             all_targets.append(batch["target"].detach().cpu().numpy())
             all_preds.append(preds.detach().cpu().numpy())
             all_losses.append(loss.detach().cpu().numpy())
+            all_train_losses.append(train_loss.detach().cpu().numpy())
         
         # After validation loop, scatter predictions vs target
         all_targets = np.concatenate(all_targets)
         all_preds = np.concatenate(all_preds)
         all_losses = np.concatenate(all_losses)
+        all_train_losses = np.concatenate(all_train_losses)
         epoch_val_loss = all_losses.mean()
         high_val_loss = all_losses[all_losses > 10].mean() if len(all_losses[all_losses > 10]) > 0 else 0
         low_val_loss = all_losses[all_losses < 10].mean() if len(all_losses[all_losses < 10]) > 0 else 0
@@ -245,6 +249,19 @@ def train(cfg, train_idx=None, val_idx=None):
         plt.savefig("assets/sanity/val_loss_vs_target.png")
         if logger is not None:
             logger.log({f"predictions/val_loss_vs_target": wandb.Image(plt.gcf()), "epoch": epoch})
+        plt.close()
+
+        #plot 3: Train Loss vs Target
+        plt.figure(figsize=(6, 5))
+        sc = plt.scatter(all_targets, all_train_losses, alpha=0.5, c=all_preds, cmap='viridis')
+        plt.xlabel("Target")
+        plt.ylabel("Train Loss")
+        plt.title("Train Loss vs Target (Validation)")
+        plt.colorbar(sc, label="Prediction")
+        plt.tight_layout()
+        plt.savefig("assets/sanity/val_train_loss_vs_target.png")
+        if logger is not None:
+            logger.log({f"predictions/val_train_loss_vs_target": wandb.Image(plt.gcf()), "epoch": epoch})
         plt.close()
 
         # On envoie la loss au scheduler pour qu'il puisse influencer le learning rate
