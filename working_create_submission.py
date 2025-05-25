@@ -3,7 +3,7 @@ import wandb
 import hydra
 import csv
 from tqdm import tqdm
-from models.multimodalAttention import MultiModalAttentionRegressor
+from models.multimodalAttention import *
 
 
 @hydra.main(config_path="configs", config_name="train")
@@ -20,11 +20,13 @@ def test_model (cfg) :
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    model = MultiModalAttentionRegressor()
-    checkpoint = torch.load("checkpoints/MIN_ATT&DAR_MULTIMODAL_2025-05-25_10-35-48.pt",weights_only=False)["model_state_dict"]
-    print(f"Loading model from checkpoint: {cfg.checkpoint_path}")
-    model.load_state_dict(checkpoint, strict=False)
+    model = MultiModalAttentionMixed(weights=[0.6,0.4])
+    regressor = torch.load("checkpoints/MIN_ATT&DAR_MULTIMODAL_2025-05-25_10-35-48.pt",weights_only=False)["model_state_dict"]
+    classifier = torch.load("checkpoints/MIN_ATT&DAR_MULTIMODAL_2025-05-25_18-57-50.pt",weights_only=False)["model_state_dict"]
+    model.regressor.load_state_dict(regressor, strict=False)
+    model.classifier.load_state_dict(classifier, strict=False)
     model.to(device)
+
 
     print("Model architecture:")
     print(model)
@@ -44,7 +46,7 @@ def test_model (cfg) :
             batch["channel"] = batch["channel"].to(device)
             batch["year"] = batch["year"].to(device)
             with torch.no_grad():
-                out_data = model(batch)
+                out_data = model(batch,random=True)
                 #out_data = torch.expm1(out_data)
                 # J'ai passé les log1views entre 0 et 1
                 out_data = torch.expm1(out_data)
