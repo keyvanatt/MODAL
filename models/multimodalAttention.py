@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
-from models.dinov2 import DinoV2Finetune
-from models.distilBert import DistilBertEncoder
+from models.resnet import ResNet50
+from models.llama import LlamaTextEncoder
 import os
 import pandas as pd
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -10,15 +10,15 @@ class MultiModalAttention(nn.Module):
     def __init__(self, text_model_name='distilbert-base-multilingual-cased', freeze_dino=True):
         super().__init__()
 
-        # --- Image encoder: DINOv2
-        self.image_encoder = DinoV2Finetune(frozen=True, regression=False,get_tokens=True)
+        # --- Image encoder: ResNet50
+        self.image_encoder = ResNet50(frozen=True,get_tokens=True)
         self.image_embedding_dim = self.image_encoder.dim
 
-        # --- Text encoder (DistilBERT)
-        self.text_encoder = DistilBertEncoder(model_name=text_model_name, pool=False,freeze=True)
+
+        # --- Text encoder (Llama)
+        self.text_encoder = LlamaTextEncoder(pool=False,freeze=True)
         self.text_embedding_dim = self.text_encoder.dim
 
-        assert self.image_embedding_dim == self.text_embedding_dim, "Image and text embedding dimensions must match."
 
         self.channel_embedding_dim = 8
         self.channel_number = 46
@@ -35,15 +35,15 @@ class MultiModalAttention(nn.Module):
 
         self.cross_attn = nn.MultiheadAttention(
             embed_dim=self.image_embedding_dim,
-            num_heads=8,
+            num_heads=32,
             batch_first=True
         )
 
         self.pool = nn.AdaptiveAvgPool1d(1)
-        self.project_dim = 512
+        self.project_dim = 1024
         self.reg_input_dim = self.project_dim+self.channel_embedding_dim+1
         self.projector = nn.Sequential(
-            nn.Linear(2 * self.image_embedding_dim, self.project_dim),
+            nn.Linear(self.image_embedding_dim, self.project_dim),
             nn.ReLU(),
             nn.Dropout(self.droupout),
             
@@ -55,6 +55,9 @@ class MultiModalAttention(nn.Module):
         print("shape of image encoder: ", self.image_embedding_dim)
         print("shape of text encoder: ", self.text_embedding_dim)
         print("shape of channel embedding: ", self.channel_embedding_dim)
+
+        assert self.image_embedding_dim == self.text_embedding_dim, "Image and text embedding dimensions must match."
+
 
     def forward(self, x):
 
@@ -75,12 +78,10 @@ class MultiModalAttention(nn.Module):
         # image_tokens: (batch, seq_len_img, embed_dim) -> K, V
         # nn.MultiheadAttention expects (batch, seq, embed_dim) with batch_first=True
         attn_output_txt, _ = self.cross_attn(query=text_tokens, key=image_tokens, value=image_tokens)
-        attn_output_img, _ = self.cross_attn(query=image_tokens, key=text_tokens, value=text_tokens)
         # Concaténation sur la dimension des features (embed_dim)
         attn_output_txt_pooled = attn_output_txt.mean(dim=1)  # (batch, embed_dim)
-        attn_output_img_pooled = attn_output_img.mean(dim=1)  # (batch, embed_dim)
         
-        attn_output = torch.cat([attn_output_txt_pooled, attn_output_img_pooled], dim=-1)  # (batch, seq_len, 2*embed_dim)
+        attn_output = attn_output_txt
         #x = attn_output.transpose(1, 2)  # (batch, embed_dim, seq_len_text)
         #x = self.pool(x).squeeze(-1)  # (batch, embed_dim)
         
@@ -102,7 +103,7 @@ class MultiModalAttentionRegressor(MultiModalAttention):
             nn.Linear(self.reg_input_dim, 1),
             nn.Dropout(self.droupout),
         )
-        self.activation = lambda x : torch.functional.Sigmoid(x)*20
+        self.activation = lambda x : torch.nn.functional.sigmoid(x)*20
 
 
 class MultiModalAttentionClassifier(MultiModalAttention):
@@ -118,17 +119,28 @@ class MultiModalAttentionClassifier(MultiModalAttention):
 
 class MultiModalAttentionMixed(MultiModalAttention):
     def __init__(self, text_model_name='distilbert-base-multilingual-cased', freeze_dino=True, weights = [0.5, 0.5]):
+        super().__init__(text_model_name=text_model_name, freeze_dino=freeze_dino)
         self.regressor = MultiModalAttentionRegressor(text_model_name=text_model_name, freeze_dino=freeze_dino)
         self.categories_df = pd.read_csv("dataset/log1pviews_per_category.csv")
         classification_dim = len(self.categories_df)
         self.classifier = MultiModalAttentionClassifier(text_model_name=text_model_name, freeze_dino=freeze_dino, classification_dim=classification_dim)
         self.weights = weights
     
-    def forward(self, x):
+    def forward(self, x, random=False):
+        device = x["image"].device  # Get the device from the image tensor
         reg_output = self.regressor(x)
         class_output = self.classifier(x)
-        class_output = torch.argmax(class_output, axis=1)
-        class_output = self.categories_df["avg_log1p_views"].values[class_output].reshape(-1, 1)  # Convert to tensor and reshape
+        class_output = torch.argmax(class_output, dim=1)  # For classification, get the predicted class
+        avg_class_output = self.categories_df["avg_log1p_views"].values[class_output.cpu().numpy()].reshape(-1,1)  # Convert to tensor and reshape
+        avg_class_output = torch.tensor(avg_class_output, device=device, dtype=torch.float32)  # Convert to tensor and move to device
+        if random:
+            var_class_output = self.categories_df["var_log1p_views"].values[class_output.cpu().numpy()].reshape(-1,1)  # Convert to tensor and reshape
+            std_class_output = torch.sqrt(torch.tensor(var_class_output, device=device, dtype=torch.float32))
+            class_output = torch.normal(mean=avg_class_output, std=std_class_output)
+        else:
+        
+            class_output = avg_class_output
+        
         return reg_output * self.weights[0] + class_output * self.weights[1]
         
     
