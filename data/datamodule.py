@@ -138,14 +138,9 @@ class DataModuleTemporal(DataModule):
         selected_2022 = np.random.choice(idx_2022, size=len(idx_2022)//2, replace=False,)
         # Ajouter à val_idx
         # Keyvan, je trouve pas ca cohérent de prendre un validation set aussi spécifique
-        #self.val_idx = np.concatenate([selected_2022, idx_2023])
-        #self.train_idx = np.setdiff1d(np.arange(len(self.full_dataset)), self.val_idx)
-
-        val_size = int(0.2 * len(self.full_dataset))  # 20% pour validation, adapte si besoin
-        all_indices = np.arange(len(self.full_dataset))
-        np.random.shuffle(all_indices)
-        self.val_idx = all_indices[:val_size]
-        self.train_idx = all_indices[val_size:]
+        self.val_idx = np.concatenate([selected_2022, idx_2023])
+        self.train_idx = np.setdiff1d(np.arange(len(self.full_dataset)), self.val_idx)
+        
 
         val_percentage = len(self.val_idx) / len(self.full_dataset) * 100
         print(f"Pourcentage des données utilisées pour la validation : {val_percentage:.2f}%")
@@ -205,6 +200,34 @@ class DataModuleTemporal(DataModule):
             num_workers=self.num_workers,
         )
     
+    def train_high_dataloader(self, threshold=12):
+        """Train dataloader with high targets only."""
+        # Récupérer les cibles (targets) du train_set
+        targets = np.array([self.full_dataset.targets[i] for i in self.train_set.indices])
+        idx_high = np.where(targets > threshold)[0]
+
+        high_set = Subset(self.train_set, idx_high)
+
+        return DataLoader(
+            high_set,
+            batch_size=self.batch_size,
+            shuffle=True,
+            num_workers=self.num_workers,
+        )
+    def train_low_dataloader(self, threshold=12):
+        """Train dataloader with low targets only."""
+        # Récupérer les cibles (targets) du train_set
+        targets = np.array([self.full_dataset.targets[i] for i in self.train_set.indices])
+        idx_low = np.where(targets < threshold)[0]
+
+        low_set = Subset(self.train_set, idx_low)
+
+        return DataLoader(
+            low_set,
+            batch_size=self.batch_size,
+            shuffle=True,
+            num_workers=self.num_workers,
+        )
     
     def train_dataloader_dynamique(self, epoch = 0):
         """Train dataloader dynamique. Change la fenêtre sur chaque epoch"""

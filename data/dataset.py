@@ -17,6 +17,8 @@ class Dataset(torch.utils.data.Dataset):
 
         if "views" in info.columns:
             self.targets = info["log1p_views"].values
+        if "category" in info.columns:
+            self.class_targets = info["category"].values            
         
 
         # - ids
@@ -43,6 +45,9 @@ class Dataset(torch.utils.data.Dataset):
 
             if hasattr(self, "targets"):
                 self.targets = self.targets[sorted_indices]
+
+            if hasattr(self, "class_targets"):
+                self.class_targets = self.class_targets[sorted_indices]
 
     def __len__(self):
         return self.ids.shape[0]
@@ -72,5 +77,7 @@ class Dataset(torch.utils.data.Dataset):
         # - don't have the target for test
         if hasattr(self, "targets"):
             value["target"] = torch.tensor(self.targets[idx], dtype=torch.float32)
+        if hasattr(self, "class_targets"):
+            value["class_target"] = torch.tensor(self.class_targets[idx], dtype=torch.int64)
         return value
     

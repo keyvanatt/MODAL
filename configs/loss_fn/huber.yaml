@@ -1,0 +1,2 @@
+_target_ : utils.loss_fn.HuberLoss
+delta : 1.0

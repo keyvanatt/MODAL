@@ -11,7 +11,7 @@ class DistilBertEncoder(nn.Module):
             param.requires_grad = False
         if not freeze:
             for param in list(self.model.parameters())[-2:]:
-                param.requires_grad = False
+                param.requires_grad = True
         self.dim = self.model.config.hidden_size
         self.pool = pool
 
