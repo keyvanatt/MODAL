@@ -134,7 +134,6 @@ def train(cfg, train_idx=None, val_idx=None):
         # Training loop #
         #################
 
-<<<<<<< HEAD
 
 
         train_loader = datamodule.train_dataloader_dynamique(epoch = epoch)
@@ -148,8 +147,6 @@ def train(cfg, train_idx=None, val_idx=None):
             else None
         )
 
-=======
->>>>>>> 2b2f7f6c73f1d63cb1fcd13a1fd6bf9d97a6d4fd
     
         model.train()
         epoch_train_loss = 0
