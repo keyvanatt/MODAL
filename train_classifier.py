@@ -6,13 +6,14 @@ import matplotlib.pyplot as plt
 import os
 os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 
-from models.multimodalAttention import MultiModalAttentionRegressor
+from models.multimodalAttention import MultiModalAttentionClassifier
 from models.dinov2 import DinoV2Finetune
 
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 from utils.sanity import show_images
 import numpy as np
+import pandas as pd
 
 
 @hydra.main(config_path="configs", config_name="train")
@@ -31,7 +32,7 @@ def train(cfg, train_idx=None, val_idx=None):
         Ces données config sont accessibles via le paramètre cfg qui n'est
         pas à renseigner lors de l'appel de la fonction.
     """
-
+    categories_df = pd.read_csv("dataset/log1pviews_per_category.csv")
     logger = (
         wandb.init(
             project="challenge_CSC_43M04_EP",
@@ -45,10 +46,10 @@ def train(cfg, train_idx=None, val_idx=None):
     # On crée le modèle défini dans train.yaml sur hydra et le to(device) le balance 
     # sur le cpu s'il existet
     #model = hydra.utils.instantiate(cfg.model.instance).to(device)
-    model = MultiModalAttentionRegressor().to(device)
+    model = MultiModalAttentionClassifier().to(device)
     # On crée l'optimizer défini sur train.yaml
     optimizer = hydra.utils.instantiate(cfg.optim, params=model.parameters())
-    loss_fn = hydra.utils.instantiate(cfg.loss_fn)
+    loss_fn = torch.nn.CrossEntropyLoss()
     # Idem et le datamodule permet globalement de charger les images et les fournir au modèle
     datamodule = hydra.utils.instantiate(cfg.datamodule, 
     
@@ -148,9 +149,10 @@ def train(cfg, train_idx=None, val_idx=None):
             batch["target"] = batch["target"].to(device).squeeze()
             batch["channel"] = batch["channel"].to(device)
             batch["year"] = batch["year"].to(device)
+            batch["class_target"] = batch["class_target"].to(device).squeeze()  # For classification
             # Pass forward
             preds = model(batch).squeeze()
-            loss = loss_fn(preds, batch["target"])
+            loss = loss_fn(preds, batch["class_target"])
 
             # Log weights, biases, and gradients to wandb
             if logger is not None:
@@ -206,8 +208,10 @@ def train(cfg, train_idx=None, val_idx=None):
             batch["channel"] = batch["channel"].to(device)
             batch["year"] = batch["year"].to(device)
             with torch.no_grad():
-                preds = model(batch).view(-1)
-            loss = torch.nn.functional.mse_loss(preds, batch["target"], reduction='none')  # shape: (batch_size,)
+                preds = model(batch)
+                num_pred = torch.argmax(preds, dim=1)  # For classification, get the predicted class
+                num_pred = categories_df["avg_log1p_views"].values[num_pred].reshape(-1, 1)  # Convert to tensor and reshape
+            loss = torch.nn.functional.mse_loss(num_pred, batch["target"], reduction='none')  # shape: (batch_size,)
             train_loss = loss_fn(preds, batch["target"], reduction='none')  # shape: (batch_size,)
             # Collect for scatter plot
             all_targets.append(batch["target"].detach().cpu().numpy())
