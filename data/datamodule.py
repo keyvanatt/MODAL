@@ -237,7 +237,8 @@ class DataModuleTemporal(DataModule):
         else:
             anneeMin = 2022
         
-        if (self.anneeMin == -1 or self.anneeMin != anneeMin):
+        
+        if (epoch != 0 and (self.anneeMin == -1 or self.anneeMin != anneeMin)) :
             print ("******")
             print ("DATAMODULE DYNAMIQUE")
             print ("******")

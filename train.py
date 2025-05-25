@@ -134,6 +134,19 @@ def train(cfg, train_idx=None, val_idx=None):
         # Training loop #
         #################
 
+
+
+        train_loader = datamodule.train_dataloader_dynamique(epoch = epoch)
+
+
+        # Envoie le sanity check a wandb pour le training set
+        train_sanity = show_images(train_loader, name="assets/sanity/train_images")
+        (
+            logger.log({"sanity_checks/train_images_epoch_"+str(epoch): wandb.Image(train_sanity)})
+            if logger is not None
+            else None
+        )
+
     
         model.train()
         epoch_train_loss = 0
