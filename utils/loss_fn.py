@@ -63,7 +63,7 @@ class HuberLoss(nn.Module):
         super(HuberLoss, self).__init__()
         self.delta = delta
 
-    def forward(self, y_pred, y_true):
+    def forward(self, y_pred, y_true, reduction='mean'):
         # Ensure the predictions and targets are non-negative and float type
         y_pred = torch.clamp(y_pred, min=0).to(torch.float32)
         y_true = torch.clamp(y_true, min=0).to(torch.float32)
@@ -76,4 +76,9 @@ class HuberLoss(nn.Module):
                            0.5 * diff ** 2,
                            self.delta * (abs_diff - 0.5 * self.delta))
 
-        return loss.mean()
+        if reduction == 'mean':
+            return loss.mean()
+        elif reduction == 'sum':
+            return loss.sum()
+        else:
+            return loss
