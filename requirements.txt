@@ -9,3 +9,5 @@ wandb
 transformers
 torch
 torchvision
+accelerate
+bitsandbytes

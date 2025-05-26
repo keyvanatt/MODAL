@@ -39,5 +39,5 @@ datamodule:
 
 data_dir: ${root_dir}/dataset/
 root_dir:  ${hydra:runtime.cwd}
-checkpoint_path: ${root_dir}/checkpoints/${experiment_name}.pt
-min_checkpoint_path: ${root_dir}/checkpoints/MIN_${experiment_name}.pt
+checkpoint_path: /Data/checkpoints/${experiment_name}.pt
+min_checkpoint_path: /Data/checkpoints/MIN_${experiment_name}.pt

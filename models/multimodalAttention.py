@@ -35,7 +35,7 @@ class MultiModalAttention(nn.Module):
 
         self.cross_attn = nn.MultiheadAttention(
             embed_dim=self.image_embedding_dim,
-            num_heads=32,
+            num_heads=16,
             batch_first=True
         )
 
@@ -57,7 +57,7 @@ class MultiModalAttention(nn.Module):
         print("shape of channel embedding: ", self.channel_embedding_dim)
 
         assert self.image_embedding_dim == self.text_embedding_dim, "Image and text embedding dimensions must match."
-
+        
 
     def forward(self, x):
 
@@ -81,7 +81,7 @@ class MultiModalAttention(nn.Module):
         # Concaténation sur la dimension des features (embed_dim)
         attn_output_txt_pooled = attn_output_txt.mean(dim=1)  # (batch, embed_dim)
         
-        attn_output = attn_output_txt
+        attn_output = attn_output_txt_pooled
         #x = attn_output.transpose(1, 2)  # (batch, embed_dim, seq_len_text)
         #x = self.pool(x).squeeze(-1)  # (batch, embed_dim)
         

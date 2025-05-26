@@ -70,8 +70,11 @@ def train(cfg, train_idx=None, val_idx=None):
     # On retient dans une variable min_learning rate le learning rate final du scheduler
     # Cette variable min_learning_rate est très importante car elle conditionne la fin de
     # la convergence
+
+
     scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=cfg.factor_learning_rate, patience=cfg.patience_learning_rate, min_lr=cfg.min_learning_rate)
 
+    print("Sanity checks...")
     # Envoie le sanity check a wandb pour le training set
     train_sanity = show_images(train_loader, name="assets/sanity/train_images")
     (
@@ -98,7 +101,7 @@ def train(cfg, train_idx=None, val_idx=None):
         plt.xlabel("Target")
         plt.ylabel("Count")
         plt.tight_layout()
-        plt.savefig(f"assets/sanity/{name}_target_dist.png")
+        #plt.savefig(f"assets/sanity/{name}_target_dist.png")
         if logger is not None:
             logger.log({f"sanity_checks/{name}_target_dist": wandb.Image(plt.gcf())})
         plt.close()
@@ -134,20 +137,8 @@ def train(cfg, train_idx=None, val_idx=None):
         # Training loop #
         #################
 
+        print(torch.cuda.memory_summary())
 
-
-        train_loader = datamodule.train_dataloader_dynamique(epoch = epoch)
-
-
-        # Envoie le sanity check a wandb pour le training set
-        train_sanity = show_images(train_loader, name="assets/sanity/train_images")
-        (
-            logger.log({"sanity_checks/train_images_epoch_"+str(epoch): wandb.Image(train_sanity)})
-            if logger is not None
-            else None
-        )
-
-    
         model.train()
         epoch_train_loss = 0
         # Compte le nombre d'images entraînées pour faire la moyenne pour le train_loss
@@ -245,7 +236,6 @@ def train(cfg, train_idx=None, val_idx=None):
         plt.ylabel("Prediction")
         plt.title("Predictions vs Target (Validation)")
         plt.tight_layout()
-        plt.savefig("assets/sanity/val_pred_vs_target.png")
         if logger is not None:
             logger.log({f"predictions/val_pred_vs_target": wandb.Image(plt.gcf()),"epoch": epoch})
         plt.close()
@@ -258,7 +248,6 @@ def train(cfg, train_idx=None, val_idx=None):
         plt.title("Loss vs Target (Validation)")
         plt.colorbar(sc, label="Prediction")
         plt.tight_layout()
-        plt.savefig("assets/sanity/val_loss_vs_target.png")
         if logger is not None:
             logger.log({f"predictions/val_loss_vs_target": wandb.Image(plt.gcf()), "epoch": epoch})
         plt.close()
@@ -271,7 +260,6 @@ def train(cfg, train_idx=None, val_idx=None):
         plt.title("Train Loss vs Target (Validation)")
         plt.colorbar(sc, label="Prediction")
         plt.tight_layout()
-        plt.savefig("assets/sanity/val_train_loss_vs_target.png")
         if logger is not None:
             logger.log({f"predictions/val_train_loss_vs_target": wandb.Image(plt.gcf()), "epoch": epoch})
         plt.close()
