@@ -128,7 +128,7 @@ class MultiModalAttentionClassifier(MultiModalAttention):
             nn.Linear(self.reg_input_dim, self.classification_dim),
             nn.Dropout(self.droupout),
         )
-        self.activation = nn.Softmax(dim=1)  # Softmax for classification
+        self.activation = nn.Identity()  
         print("Nombre de catégories : ", self.classification_dim)
 
 class MultiModalAttentionMixed(MultiModalAttention):

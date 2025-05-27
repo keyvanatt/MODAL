@@ -21,7 +21,7 @@ def test_model (cfg) :
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     model = MultiModalAttentionMixed(weights=[0.6,0.4])
-    regressor = torch.load("checkpoints/MIN_ATT&DAR_MULTIMODAL_2025-05-25_10-35-48.pt",weights_only=False)["model_state_dict"]
+    regressor = torch.load("~/Data/checkpoints/MIN_ATT&DAR_MULTIMODAL_2025-05-27_17-49-42.pt",weights_only=False)["model_state_dict"]
     classifier = torch.load("checkpoints/MIN_ATT&DAR_MULTIMODAL_2025-05-25_18-57-50.pt",weights_only=False)["model_state_dict"]
     model.regressor.load_state_dict(regressor, strict=False)
     model.classifier.load_state_dict(classifier, strict=False)
@@ -45,6 +45,9 @@ def test_model (cfg) :
             batch["image"] = batch["image"].to(device)
             batch["channel"] = batch["channel"].to(device)
             batch["year"] = batch["year"].to(device)
+            batch["http_count"] = batch["http_count"].to(device)
+            batch["diese"] = batch["diese"].to(device)
+            batch["nb_mots"] = batch["nb_mots"].to(device)
             with torch.no_grad():
                 out_data = model(batch,random=True)
                 #out_data = torch.expm1(out_data)

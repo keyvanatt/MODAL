@@ -32,7 +32,10 @@ def train(cfg, train_idx=None, val_idx=None):
         Ces données config sont accessibles via le paramètre cfg qui n'est
         pas à renseigner lors de l'appel de la fonction.
     """
-    categories_df = pd.read_csv("dataset/log1pviews_per_category.csv")
+    
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    csv_path = os.path.join(base_dir, "dataset/log1pviews_per_category.csv")
+    categories_df = pd.read_csv(csv_path)
     logger = (
         wandb.init(
             project="challenge_CSC_43M04_EP",
@@ -43,13 +46,13 @@ def train(cfg, train_idx=None, val_idx=None):
     )
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print (device)
     # On crée le modèle défini dans train.yaml sur hydra et le to(device) le balance 
     # sur le cpu s'il existet
     #model = hydra.utils.instantiate(cfg.model.instance).to(device)
     model = MultiModalAttentionClassifier(classification_dim=len(categories_df)).to(device)
     # On crée l'optimizer défini sur train.yaml
     optimizer = hydra.utils.instantiate(cfg.optim, params=model.parameters())
-    loss_fn = torch.nn.CrossEntropyLoss()
     # Idem et le datamodule permet globalement de charger les images et les fournir au modèle
     datamodule = hydra.utils.instantiate(cfg.datamodule, 
     
@@ -74,14 +77,16 @@ def train(cfg, train_idx=None, val_idx=None):
     scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=cfg.factor_learning_rate, patience=cfg.patience_learning_rate, min_lr=cfg.min_learning_rate)
 
     # Envoie le sanity check a wandb pour le training set
-    train_sanity = show_images(train_loader, name="assets/sanity/train_images")
+    csv_path = os.path.join(base_dir, "assets/sanity/train_images")
+    train_sanity = show_images(train_loader, name=csv_path)
     (
         logger.log({"sanity_checks/train_images": wandb.Image(train_sanity)})
         if logger is not None
         else None
     )
     # Envoie le sanity check a wandb pour le validation set
-    val_sanity = show_images(val_loader, name="assets/sanity/val_images")
+    csv_path = os.path.join(base_dir, "assets/sanity/val_images")
+    val_sanity = show_images(val_loader, name=csv_path)
     logger.log(
         {"sanity_checks/val_images": wandb.Image(val_sanity)}
     )
@@ -99,7 +104,8 @@ def train(cfg, train_idx=None, val_idx=None):
         plt.xlabel("Target")
         plt.ylabel("Count")
         plt.tight_layout()
-        plt.savefig(f"assets/sanity/{name}_target_dist.png")
+        csv_path = os.path.join(base_dir, f"assets/sanity/{name}_target_dist.png")
+        plt.savefig(csv_path)
         if logger is not None:
             logger.log({f"sanity_checks/{name}_target_dist": wandb.Image(plt.gcf())})
         plt.close()
@@ -139,6 +145,14 @@ def train(cfg, train_idx=None, val_idx=None):
     for u, c in zip(unique, counts):
         print(f"Class {u}: {c} samples")
 
+    # Calcul des poids inverses à la fréquence
+    class_weights = 1. / counts
+    class_weights = class_weights / class_weights.sum()  # Normalisation (optionnel)
+    class_weights = torch.tensor(class_weights, dtype=torch.float32, device=device)
+    print("Class weights:", class_weights)
+
+
+    loss_fn = torch.nn.CrossEntropyLoss(weight=class_weights)
 
 
     print ("*********")
@@ -167,14 +181,13 @@ def train(cfg, train_idx=None, val_idx=None):
             batch["target"] = batch["target"].to(device).squeeze()
             batch["channel"] = batch["channel"].to(device)
             batch["year"] = batch["year"].to(device)
+            batch["http_count"] = batch["http_count"].to(device)
             batch["diese"] = batch["diese"].to(device)
             batch["nb_mots"] = batch["nb_mots"].to(device)
-            batch["class_target"] = batch["class_target"].to(device).squeeze()  # For classification
+            batch["class_target"] = batch["class_target"].long().to(device)
             # Pass forward
             preds = model(batch).squeeze()
-            print ("TYPE DE BATCH[CLASS_TARGET]")
-            print (type(batch["class_target"]))
-
+            
             loss = loss_fn(preds, batch["class_target"])
 
             # Log weights, biases, and gradients to wandb
@@ -225,20 +238,28 @@ def train(cfg, train_idx=None, val_idx=None):
         all_preds = []
         all_losses = []
         all_train_losses = []
+        all_val_losses = []
         for _, batch in enumerate(val_loader):
             batch["image"] = batch["image"].to(device)
+            # Pareil pour les labels
             batch["target"] = batch["target"].to(device).squeeze()
             batch["channel"] = batch["channel"].to(device)
             batch["year"] = batch["year"].to(device)
+            batch["http_count"] = batch["http_count"].to(device)
             batch["diese"] = batch["diese"].to(device)
             batch["nb_mots"] = batch["nb_mots"].to(device)
-            batch["class_target"] = batch["class_target"].to(device).squeeze()
+            batch["class_target"] = batch["class_target"].long().to(device)
             with torch.no_grad():
                 preds = model(batch)
             num_pred = torch.argmax(preds, dim=1)  # For classification, get the predicted class
             num_pred = categories_df["avg_log1p_views"].values[num_pred.cpu().numpy()]  # Convert to tensor and reshape
             num_pred = torch.tensor(num_pred, device=device, dtype=torch.float32)  # Convert to tensor and move to device
             loss = torch.nn.functional.mse_loss(num_pred, batch["target"], reduction='none')  # shape: (batch_size,)
+            
+            all_val_losses.append(loss.detach().cpu().numpy().squeeze())
+
+            
+            
             train_loss = torch.nn.functional.cross_entropy(preds, batch["class_target"], reduction='none')  # shape: (batch_size,)
             # Collect for scatter plot
             all_targets.append(batch["target"].detach().cpu().numpy())
@@ -269,7 +290,7 @@ def train(cfg, train_idx=None, val_idx=None):
         plt.ylabel("Prediction")
         plt.title("Predictions vs Target (Validation)")
         plt.tight_layout()
-        plt.savefig("assets/sanity/val_pred_vs_target.png")
+        #plt.savefig("assets/sanity/val_pred_vs_target.png")
         if logger is not None:
             logger.log({f"predictions/val_pred_vs_target": wandb.Image(plt.gcf()),"epoch": epoch})
         plt.close()
@@ -282,7 +303,7 @@ def train(cfg, train_idx=None, val_idx=None):
         plt.title("Loss vs Target (Validation)")
         plt.colorbar(sc, label="Prediction")
         plt.tight_layout()
-        plt.savefig("assets/sanity/val_loss_vs_target.png")
+        #plt.savefig("assets/sanity/val_loss_vs_target.png")
         if logger is not None:
             logger.log({f"predictions/val_loss_vs_target": wandb.Image(plt.gcf()), "epoch": epoch})
         plt.close()
@@ -295,10 +316,14 @@ def train(cfg, train_idx=None, val_idx=None):
         plt.title("Train Loss vs Target (Validation)")
         plt.colorbar(sc, label="Prediction")
         plt.tight_layout()
-        plt.savefig("assets/sanity/val_train_loss_vs_target.png")
+        #plt.savefig("assets/sanity/val_train_loss_vs_target.png")
         if logger is not None:
             logger.log({f"predictions/val_train_loss_vs_target": wandb.Image(plt.gcf()), "epoch": epoch})
         plt.close()
+        
+
+        #epoch_val_loss = all_val_losses.mean()
+
 
         # On envoie la loss au scheduler pour qu'il puisse influencer le learning rate
         scheduler.step(epoch_val_loss)
@@ -308,8 +333,8 @@ def train(cfg, train_idx=None, val_idx=None):
         # On envoie tout à wandb
         val_metrics["val/loss_epoch"] = epoch_val_loss
         val_metrics["learning_rate"] = current_lr
-        val_metrics["val/high_loss"] = high_val_loss
-        val_metrics["val/low_loss"] = low_val_loss
+        #val_metrics["val/high_loss"] = high_val_loss
+        #val_metrics["val/low_loss"] = low_val_loss
         (
             logger.log(
                 {
