@@ -34,7 +34,7 @@ class DataModule:
         self.full_dataset = Dataset(
             self.dataset_path,
             "train_val",
-            transforms=self.test_transform, #pas de data augmentation
+            transforms=self.train_transform, #pas de data augmentation
             sorted=sorted_dataset,
         )
 
@@ -129,7 +129,7 @@ class DataModuleTemporal(DataModule):
         self.full_dataset = Dataset(
             dataset_path,
             "train_val",
-            transforms=test_transform, #pas de data augmentation
+            transforms=train_transform, #pas de data augmentation
             sorted=sliding_window,
         )
         print("Entrainement temporalisé")

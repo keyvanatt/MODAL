@@ -57,15 +57,7 @@ class Dataset(torch.utils.data.Dataset):
         image = Image.open(
             f"{self.dataset_path}/{self.split}/{self.ids[idx]}.jpg"
         ).convert("RGB")
-        transform = transforms.Compose([
-            transforms.Resize(448),               
-            transforms.RandomHorizontalFlip(),
-            transforms.ColorJitter(brightness=0.1, contrast=0.1, saturation=0.1, hue=0.02),
-            transforms.RandomRotation(4),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-        ])
-        image = transform(image)
+        image = self.transforms(image)
         value = {
             "id": self.ids[idx],
             "image": image,
