@@ -41,12 +41,17 @@ class MultiModalAttention(nn.Module):
 
         self.pool = nn.AdaptiveAvgPool1d(1)
         self.project_dim = 1024
-        self.reg_input_dim = self.project_dim+self.channel_embedding_dim+1
+        self.dim_desc = 15
+        self.reg_input_dim = self.project_dim+self.channel_embedding_dim+1+self.dim_desc+3
         self.projector = nn.Sequential(
             nn.Linear(2*self.image_embedding_dim, self.project_dim),
             nn.ReLU(),
-            nn.Dropout(self.droupout),
-            
+            nn.Dropout(self.droupout), 
+        )
+        self.projector_desc = nn.Sequential(
+            nn.Linear(self.text_embedding_dim, self.dim_desc),
+            nn.ReLU(),
+            nn.Dropout(0.5), 
         )
         self.reg_head = None     
         self.activation = None
@@ -66,12 +71,17 @@ class MultiModalAttention(nn.Module):
         desc_texts = x["description"]
         channel = x["channel"]
         year = x["year"]
+        nb_liens = x["http_count"]
+        nb_diese = x["diese"]
+        nb_mots = x["nb_mots"]
 
         # --- Image features
         image_tokens = self.image_encoder({"image": image_tensor})
 
         # --- Title features
         text_tokens = self.text_encoder(title_texts)
+        desc_tokens = self.text_encoder(desc_texts)
+
 
 
         # text_tokens: (batch, seq_len_text, embed_dim) -> Q
@@ -83,17 +93,19 @@ class MultiModalAttention(nn.Module):
         attn_output_txt_pooled = attn_output_txt.mean(dim=1)  # (batch, embed_dim)
         attn_output_img_pooled = attn_output_img.mean(dim=1)
         
+        desc_tokens_pooled = desc_tokens.mean(dim=1)  # (batch, embed_dim)
+
         attn_output = torch.cat([attn_output_txt_pooled, attn_output_img_pooled], dim=1)  # (batch, 2 * embed_dim)
         #x = attn_output.transpose(1, 2)  # (batch, embed_dim, seq_len_text)
         #x = self.pool(x).squeeze(-1)  # (batch, embed_dim)
         
         x = self.projector(attn_output)  # (batch, project_dim)
-        
+        x2 = self.projector_desc(desc_tokens_pooled)  # (batch, dim_desc)
 
         channel_feat = self.channel_embedding(channel.squeeze(1))  # [B, dim]
         year = year.float()
         year_feat = (year - self.min_year) / (self.max_year - self.min_year)
-        x = torch.cat([x, channel_feat, year_feat], dim=1)
+        x = torch.cat([x, channel_feat, year_feat, x2, nb_liens, nb_mots, nb_diese], dim=1)
         x = self.reg_head(x)  # (batch, 1)
         x = self.activation(x)
         return x

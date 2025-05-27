@@ -122,7 +122,25 @@ def train(cfg, train_idx=None, val_idx=None):
         optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
         epoch = checkpoint['epoch'] + 1  # Reprend à l'epoch suivante
-    
+
+    print ("calcul ")
+
+    # La je compte les élèments du train_loader pour mettre en place une balance pour équilibrer 
+    # les catégories dans le calcul de la loss
+    all_classes = []
+    for batch in train_loader:
+        # Assure-toi que batch["class_target"] est sur CPU et converti en numpy
+        class_targets = batch["class_target"].detach().cpu().numpy().flatten()
+        all_classes.extend(class_targets)
+
+    all_classes = np.array(all_classes)
+    unique, counts = np.unique(all_classes, return_counts=True)
+    print("Class distribution in train_loader:")
+    for u, c in zip(unique, counts):
+        print(f"Class {u}: {c} samples")
+
+
+
     print ("*********")
     print ("Début training loop")
     print ("********")
@@ -149,9 +167,14 @@ def train(cfg, train_idx=None, val_idx=None):
             batch["target"] = batch["target"].to(device).squeeze()
             batch["channel"] = batch["channel"].to(device)
             batch["year"] = batch["year"].to(device)
+            batch["diese"] = batch["diese"].to(device)
+            batch["nb_mots"] = batch["nb_mots"].to(device)
             batch["class_target"] = batch["class_target"].to(device).squeeze()  # For classification
             # Pass forward
             preds = model(batch).squeeze()
+            print ("TYPE DE BATCH[CLASS_TARGET]")
+            print (type(batch["class_target"]))
+
             loss = loss_fn(preds, batch["class_target"])
 
             # Log weights, biases, and gradients to wandb
@@ -207,6 +230,8 @@ def train(cfg, train_idx=None, val_idx=None):
             batch["target"] = batch["target"].to(device).squeeze()
             batch["channel"] = batch["channel"].to(device)
             batch["year"] = batch["year"].to(device)
+            batch["diese"] = batch["diese"].to(device)
+            batch["nb_mots"] = batch["nb_mots"].to(device)
             batch["class_target"] = batch["class_target"].to(device).squeeze()
             with torch.no_grad():
                 preds = model(batch)

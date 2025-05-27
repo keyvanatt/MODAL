@@ -31,6 +31,11 @@ class Dataset(torch.utils.data.Dataset):
         self.channel = info["channel_id"].values
         self.year = info["year"].values
         
+        self.http_count = info["http_count"].values
+
+        self.diese = info["diese"].values
+        self.nb_mots = info["nb_mots"].values
+
         # - transforms
         self.transforms = transforms
 
@@ -64,7 +69,10 @@ class Dataset(torch.utils.data.Dataset):
             "title": self.title[idx],
             "description": self.description[idx],
             "channel": torch.tensor([self.channel[idx]]),
-            "year": torch.tensor([self.year[idx]])
+            "year": torch.tensor([self.year[idx]]),
+            "http_count": torch.tensor([self.http_count[idx]]),
+            "diese": torch.tensor([self.diese[idx]]),
+            "nb_mots": torch.tensor([self.nb_mots[idx]])
         }
         # - don't have the target for test
         if hasattr(self, "targets"):
