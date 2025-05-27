@@ -43,7 +43,7 @@ class MultiModalAttention(nn.Module):
         self.project_dim = 1024
         self.reg_input_dim = self.project_dim+self.channel_embedding_dim+1
         self.projector = nn.Sequential(
-            nn.Linear(self.image_embedding_dim, self.project_dim),
+            nn.Linear(2*self.image_embedding_dim, self.project_dim),
             nn.ReLU(),
             nn.Dropout(self.droupout),
             
@@ -78,10 +78,12 @@ class MultiModalAttention(nn.Module):
         # image_tokens: (batch, seq_len_img, embed_dim) -> K, V
         # nn.MultiheadAttention expects (batch, seq, embed_dim) with batch_first=True
         attn_output_txt, _ = self.cross_attn(query=text_tokens, key=image_tokens, value=image_tokens)
+        attn_output_img, _ = self.cross_attn(query=image_tokens, key=text_tokens, value=text_tokens)
         # Concaténation sur la dimension des features (embed_dim)
         attn_output_txt_pooled = attn_output_txt.mean(dim=1)  # (batch, embed_dim)
+        attn_output_img_pooled = attn_output_img.mean(dim=1)
         
-        attn_output = attn_output_txt_pooled
+        attn_output = torch.cat([attn_output_txt_pooled, attn_output_img_pooled], dim=1)  # (batch, 2 * embed_dim)
         #x = attn_output.transpose(1, 2)  # (batch, embed_dim, seq_len_text)
         #x = self.pool(x).squeeze(-1)  # (batch, embed_dim)
         
