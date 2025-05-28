@@ -143,11 +143,6 @@ def train(cfg, train_idx=None, val_idx=None):
         epoch_train_loss = 0
         # Compte le nombre d'images entraînées pour faire la moyenne pour le train_loss
         num_samples_train = 0
-        # Variables utilisées pour l'affichage wandb final
-        all_train_losses = []
-        all_val_losses = []
-        all_targets = []
-        all_preds = []
         # Là c'est juste la barre de progression pour la console
         pbar = tqdm(train_loader, desc=f"Epoch {epoch}", leave=False)
         for i, batch in enumerate(pbar):
@@ -185,8 +180,6 @@ def train(cfg, train_idx=None, val_idx=None):
             optimizer.step()
             epoch_train_loss += loss.detach().cpu().numpy() * len(batch["image"])
             num_samples_train += len(batch["image"])
-            # Pour l'affichage final
-            all_train_losses.append(loss.detach().cpu().numpy())
             # Affiche la progression dans la console
             pbar.set_postfix({"train/loss_step": loss.detach().cpu().numpy(), "learning_rate": optimizer.param_groups[0]["lr"]})
         epoch_train_loss /= num_samples_train
@@ -211,7 +204,10 @@ def train(cfg, train_idx=None, val_idx=None):
         num_samples_val = 0
         model.eval()
         all_train_losses = []
-        for _, batch in enumerate(val_loader):
+        all_val_losses = []
+        all_targets = []
+        all_preds = []
+        for _, batch in enumerate(tqdm(val_loader, desc=f"Validation Epoch {epoch}", leave=False)):
             batch["image"] = batch["image"].to(device)
             batch["target"] = batch["target"].to(device).squeeze()
             batch["channel"] = batch["channel"].to(device)
@@ -223,17 +219,17 @@ def train(cfg, train_idx=None, val_idx=None):
                 preds = model(batch).view(-1)
             targets = batch["target"].view(-1) 
             loss = torch.nn.functional.mse_loss(preds, targets, reduction='none')  # shape: (batch_size,)
-            # Il peut il y avoir un problème à la fin de la boucle ou le shape de preds et batch["target"] 
-            # ne correspondent pas
-            if (preds.shape == targets.shape):
-                num_samples_val += len(targets)
-                epoch_val_loss += loss.detach().cpu().numpy().sum()
+            train_loss = loss_fn(preds, targets, reduction='none')  # shape: (batch_size,)
 
-            """
+            num_samples_val += len(targets)
+            epoch_val_loss += loss.detach().cpu().numpy().sum()
+
+            
             # Gestion de l'affichage des données pour wandb
             all_targets.append(batch["target"].detach().cpu().numpy())
             all_val_losses.append(loss.detach().cpu().numpy())
             all_preds.append(preds.detach().cpu().numpy())
+            all_train_losses.append(train_loss.detach().cpu().numpy())
             
 
             
@@ -242,7 +238,6 @@ def train(cfg, train_idx=None, val_idx=None):
         all_preds = np.concatenate(all_preds)
         all_val_losses = np.concatenate(all_val_losses)
         all_train_losses = np.concatenate(all_train_losses)
-
         high_val_loss = all_val_losses[all_val_losses > 10].mean() if len(all_val_losses[all_val_losses > 10]) > 0 else 0
         low_val_loss = all_val_losses[all_val_losses < 10].mean() if len(all_val_losses[all_val_losses < 10]) > 0 else 0
 
@@ -281,7 +276,6 @@ def train(cfg, train_idx=None, val_idx=None):
         if logger is not None:
             logger.log({f"predictions/val_train_loss_vs_target": wandb.Image(plt.gcf()), "epoch": epoch})
         plt.close()
-"""
         epoch_val_loss /= num_samples_val
 
 
@@ -293,8 +287,8 @@ def train(cfg, train_idx=None, val_idx=None):
         # On envoie tout à wandb
         val_metrics["val/loss_epoch"] = epoch_val_loss
         val_metrics["learning_rate"] = current_lr
-        #val_metrics["val/high_loss"] = high_val_loss
-        #val_metrics["val/low_loss"] = low_val_loss
+        val_metrics["val/high_loss"] = high_val_loss
+        val_metrics["val/low_loss"] = low_val_loss
         (
             logger.log(
                 {
