@@ -21,7 +21,7 @@ def test_model (cfg) :
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     model = MultiModalAttentionRegressor()
-    regressor = torch.load("/Data/checkpoints/MIN_ATT&DAR_MULTIMODAL_2025-05-28_16-42-05.pt",weights_only=False)["model_state_dict"]
+    regressor = torch.load("/Data/checkpoints/MIN_ATT&DAR_MULTIMODAL_2025-05-28_18-16-29.pt",weights_only=False)["model_state_dict"]
     model.load_state_dict(regressor, strict=False)
     model.to(device)
 
@@ -39,7 +39,7 @@ def test_model (cfg) :
 
     with torch.no_grad():
         # Attention : les DataLoader ne sont pas indexables directement
-        for batch in test_loader:
+        for batch in tqdm(test_loader):
             batch["image"] = batch["image"].to(device)
             batch["channel"] = batch["channel"].to(device)
             batch["year"] = batch["year"].to(device)
@@ -60,27 +60,6 @@ def test_model (cfg) :
 
 
     print("Results saved to resultat.csv")
-    print("Computing val loss...")
-    # Compute validation loss on validation set
-    val_loader = datamodule.val_dataloader()
-    total_loss = 0.0
-    total_samples = 0
-    criterion = torch.nn.MSELoss()
-
-    with torch.no_grad():
-        for batch in val_loader:
-            batch["image"] = batch["image"].to(device)
-            batch["channel"] = batch["channel"].to(device)
-            batch["year"] = batch["year"].to(device)
-            labels = batch["target"].to(device)
-            outputs = model(batch).view(-1)
-            loss = criterion(outputs, labels)
-            batch_size = labels.size(0)
-            total_loss += loss.item() * batch_size
-            total_samples += batch_size
-
-    avg_loss = total_loss / total_samples if total_samples > 0 else 0
-    print(f"Validation loss (MSE): {avg_loss:.4f}")
 
 if __name__ == "__main__":
     main ()
