@@ -64,10 +64,19 @@ class DataModule:
                 stratify=years
             )
            
-        self.train_set = Subset(self.full_dataset, self.train_idx)
-        self.train_set.dataset.transforms = self.train_transform
-        self.val_set = Subset(self.full_dataset, self.val_idx)
-        self.val_set.dataset.transforms = self.test_transform
+        self.train_set = Dataset(
+            self.dataset_path,
+            "train_val",
+            transforms=self.train_transform,
+            indices=self.train_idx,
+        )
+        self.val_set = Dataset(
+            self.dataset_path,
+            "train_val",
+            transforms=self.test_transform,
+            indices=self.val_idx,
+        )
+
         
 
     def train_dataloader(self):

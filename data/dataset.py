@@ -6,7 +6,7 @@ from torchvision import transforms
 
 
 class Dataset(torch.utils.data.Dataset):
-    def __init__(self, dataset_path, split, transforms, sorted=False, indices=[]):
+    def __init__(self, dataset_path, split, transforms, sorted=False, indices=None):
         
         self.dataset_path = dataset_path
         self.split = split
@@ -14,6 +14,10 @@ class Dataset(torch.utils.data.Dataset):
         print(f"{dataset_path}/{split}.csv")
         info = pd.read_csv(f"{dataset_path}/{split}.csv")
         info["description"] = info["description"].fillna("")
+
+        if indices is not None:
+            # - filter the dataset by indices
+            info = info.iloc[indices]
 
         if "views" in info.columns:
             self.targets = info["log1p_views"].values
