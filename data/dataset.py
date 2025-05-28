@@ -18,6 +18,9 @@ class Dataset(torch.utils.data.Dataset):
         if indices is not None:
             # - filter the dataset by indices
             info = info.iloc[indices]
+            self.indices = indices
+        else:
+            self.indices = np.arange(info.shape[0])
 
         if "views" in info.columns:
             self.targets = info["log1p_views"].values
