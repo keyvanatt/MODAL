@@ -86,6 +86,19 @@ class MultiModalAttention(nn.Module):
         # text_tokens: (batch, seq_len_text, embed_dim) -> Q
         # image_tokens: (batch, seq_len_img, embed_dim) -> K, V
         # nn.MultiheadAttention expects (batch, seq, embed_dim) with batch_first=True
+        # Add positional encoding to text and image tokens
+        def add_positional_encoding(x):
+            # x: (batch, seq_len, embed_dim)
+            batch_size, seq_len, embed_dim = x.size()
+            position = torch.arange(seq_len, dtype=torch.float32, device=x.device).unsqueeze(0).unsqueeze(2)
+            div_term = torch.exp(torch.arange(0, embed_dim, 2, device=x.device).float() * (-torch.log(torch.tensor(10000.0)) / embed_dim))
+            pe = torch.zeros(1, seq_len, embed_dim, device=x.device)
+            pe[0, :, 0::2] = torch.sin(position * div_term)
+            pe[0, :, 1::2] = torch.cos(position * div_term)
+            return x + pe
+
+        text_tokens = add_positional_encoding(text_tokens)
+        image_tokens = add_positional_encoding(image_tokens)
         attn_output_txt, _ = self.cross_attn(query=text_tokens, key=image_tokens, value=image_tokens)
         attn_output_img, _ = self.cross_attn(query=image_tokens, key=text_tokens, value=text_tokens)
         # Concaténation sur la dimension des features (embed_dim)
