@@ -248,6 +248,7 @@ def train(cfg, train_idx=None, val_idx=None):
             batch["class_target"] = batch["class_target"].long().to(device)
             with torch.no_grad():
                 preds = model(batch)
+            # On récupère la class prédite
             num_pred = torch.argmax(preds, dim=1)  # For classification, get the predicted class
             num_pred = categories_df["avg_log1p_views"].values[num_pred.cpu().numpy()]  # Convert to tensor and reshape
             num_pred = torch.tensor(num_pred, device=device, dtype=torch.float32)  # Convert to tensor and move to device
