@@ -29,8 +29,7 @@ class MultiModalAttention(nn.Module):
         self.register_buffer("min_year", torch.tensor(min_year, dtype=torch.float32))
         self.register_buffer("max_year", torch.tensor(max_year, dtype=torch.float32))
 
-        self.tabular_dim = 2
-        self.droupout = 0.2
+        self.droupout = 0.4
 
 
         self.cross_attn = nn.MultiheadAttention(

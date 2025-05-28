@@ -54,9 +54,7 @@ def train(cfg, train_idx=None, val_idx=None):
     # On crée l'optimizer défini sur train.yaml
     optimizer = hydra.utils.instantiate(cfg.optim, params=model.parameters())
     # Idem et le datamodule permet globalement de charger les images et les fournir au modèle
-    datamodule = hydra.utils.instantiate(cfg.datamodule, 
-    
-    train_idx=train_idx, val_idx=val_idx)
+    datamodule = hydra.utils.instantiate(cfg.datamodule, train_idx=train_idx, val_idx=val_idx)
     train_loader = datamodule.train_dataloader()
     val_loader = datamodule.val_dataloader()
     extreme_train_loader = datamodule.extreme_train_dataloader()
@@ -129,8 +127,7 @@ def train(cfg, train_idx=None, val_idx=None):
         scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
         epoch = checkpoint['epoch'] + 1  # Reprend à l'epoch suivante
 
-    print ("calcul ")
-
+    
     # La je compte les élèments du train_loader pour mettre en place une balance pour équilibrer 
     # les catégories dans le calcul de la loss
     all_classes = []

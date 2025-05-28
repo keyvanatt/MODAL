@@ -6,7 +6,7 @@ from torchvision import transforms
 
 
 class Dataset(torch.utils.data.Dataset):
-    def __init__(self, dataset_path, split, transforms, sorted=False):
+    def __init__(self, dataset_path, split, transforms, sorted=False, indices=[]):
         
         self.dataset_path = dataset_path
         self.split = split

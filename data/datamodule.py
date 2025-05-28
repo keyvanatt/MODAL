@@ -22,6 +22,8 @@ class DataModule:
         val_idx=None,
         sorted_dataset=False,
     ):
+        
+        print ("coucou 1")
         self.dataset_path = dataset_path
         self.train_transform = train_transform  
         self.test_transform = test_transform
@@ -34,7 +36,7 @@ class DataModule:
         self.full_dataset = Dataset(
             self.dataset_path,
             "train_val",
-            transforms=self.train_transform, #pas de data augmentation
+            transforms=test_transform, #pas de data augmentation
             sorted=sorted_dataset,
         )
 
@@ -62,19 +64,11 @@ class DataModule:
                 stratify=years
             )
            
-            
         self.train_set = Subset(self.full_dataset, self.train_idx)
+        self.train_set.transforms = self.train_transform
         self.val_set = Subset(self.full_dataset, self.val_idx)
-
+        self.val_set.transforms = self.test_transform
         
-       
-    def train_val_dataloader(self):
-        return DataLoader(
-            self.full_dataset,
-            batch_size=self.batch_size,
-            shuffle=True,
-            num_workers=self.num_workers,
-        ) 
 
     def train_dataloader(self):
         """Train dataloader."""
