@@ -23,7 +23,6 @@ class DataModule:
         sorted_dataset=False,
     ):
         
-        print ("coucou 1")
         self.dataset_path = dataset_path
         self.train_transform = train_transform  
         self.test_transform = test_transform
