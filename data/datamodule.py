@@ -82,7 +82,7 @@ class DataModule:
     def train_dataloader(self):
         """Train dataloader."""
         return DataLoader(
-            self.train_set.dataset,
+            self.train_set,
             batch_size=self.batch_size,
             shuffle=True,
             num_workers=self.num_workers,
@@ -109,6 +109,35 @@ class DataModule:
             dataset,
             batch_size=1,
             shuffle=False,
+            num_workers=self.num_workers,
+        )
+    
+    def train_high_dataloader(self, threshold=12):
+        """Train dataloader with high targets only."""
+        # Récupérer les cibles (targets) du train_set
+        targets = np.array([self.full_dataset.targets[i] for i in self.train_set.indices])
+        idx_high = np.where(targets > threshold)[0]
+
+        high_set = Subset(self.train_set, idx_high)
+
+        return DataLoader(
+            high_set,
+            batch_size=self.batch_size,
+            shuffle=True,
+            num_workers=self.num_workers,
+        )
+    def train_low_dataloader(self, threshold=12):
+        """Train dataloader with low targets only."""
+        # Récupérer les cibles (targets) du train_set
+        targets = np.array([self.full_dataset.targets[i] for i in self.train_set.indices])
+        idx_low = np.where(targets < threshold)[0]
+
+        low_set = Subset(self.train_set, idx_low)
+
+        return DataLoader(
+            low_set,
+            batch_size=self.batch_size,
+            shuffle=True,
             num_workers=self.num_workers,
         )
     
@@ -180,57 +209,7 @@ class DataModuleTemporal(DataModule):
             num_workers=self.num_workers,
         )
     
-    def extreme_train_dataloader(self, threshold=10, proportion=0.8):
-        # Récupérer les cibles (targets) du train_set
-        targets = np.array([self.full_dataset.targets[i] for i in self.train_set.indices])
-        idx_high = np.where(targets > threshold)[0]
-        idx_low = np.where(targets < threshold)[0]
-
-        # Sélectionner une proportion des indices faibles (idx_low)
-        n_low = int((1-proportion)/proportion * len(idx_high))
-        if n_low < len(idx_low):
-            selected_idx_low = np.random.choice(idx_low, size=n_low, replace=False)
-        else:
-            selected_idx_low = idx_low
-
-        extreme_idx = np.concatenate([idx_high, selected_idx_low])
-        extreme_set = Subset(self.train_set, extreme_idx)
-
-        return DataLoader(
-            extreme_set,
-            batch_size=self.batch_size,
-            shuffle=True,
-            num_workers=self.num_workers,
-        )
     
-    def train_high_dataloader(self, threshold=12):
-        """Train dataloader with high targets only."""
-        # Récupérer les cibles (targets) du train_set
-        targets = np.array([self.full_dataset.targets[i] for i in self.train_set.indices])
-        idx_high = np.where(targets > threshold)[0]
-
-        high_set = Subset(self.train_set, idx_high)
-
-        return DataLoader(
-            high_set,
-            batch_size=self.batch_size,
-            shuffle=True,
-            num_workers=self.num_workers,
-        )
-    def train_low_dataloader(self, threshold=12):
-        """Train dataloader with low targets only."""
-        # Récupérer les cibles (targets) du train_set
-        targets = np.array([self.full_dataset.targets[i] for i in self.train_set.indices])
-        idx_low = np.where(targets < threshold)[0]
-
-        low_set = Subset(self.train_set, idx_low)
-
-        return DataLoader(
-            low_set,
-            batch_size=self.batch_size,
-            shuffle=True,
-            num_workers=self.num_workers,
-        )
     
     def train_dataloader_dynamique(self, epoch = 0):
         """Train dataloader dynamique. Change la fenêtre sur chaque epoch"""
@@ -271,6 +250,7 @@ class DataModuleModern(DataModule):
         taille_val,
         train_idx=None,
         val_idx=None,
+        sliding_window=False
     ):
         
         if train_idx is not None or val_idx is not None:
@@ -285,7 +265,6 @@ class DataModuleModern(DataModule):
             transforms=train_transform,
             sorted=False,
         )
-        print("Entrainement temporalisé")
         idx_2023 = np.nonzero(np.array(self.full_dataset.year) == 2023)[0]
         idx_2022 = np.nonzero(np.array(self.full_dataset.year) == 2022)[0]
 
@@ -306,10 +285,18 @@ class DataModuleModern(DataModule):
             batch_size,
             num_workers,
             taille_val,
-            train_idx=train_idx,
-            val_idx=val_idx,
+            train_idx=self.train_idx,
+            val_idx=self.val_idx,
             sorted_dataset=False,
         )
 
-
+    def val_dataloader(self):
+        return super().val_dataloader()
+    
+    def test_dataloader(self):
+        return super().test_dataloader()
+    
+    def train_dataloader(self):
+        """Train dataloader."""
+        return super().train_dataloader()
 

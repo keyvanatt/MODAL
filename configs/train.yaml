@@ -28,7 +28,7 @@ hydra:
 # Les trucs entre ${} font référence aux fichiers plus hauts dans l'arborescence
 
 datamodule:
-  _target_: data.datamodule.DataModuleTemporal
+  _target_: data.datamodule.DataModuleModern
   dataset_path: ${data_dir}
   train_transform: ${dataset.train_transform}
   test_transform: ${dataset.val_transform}
