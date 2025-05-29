@@ -260,6 +260,56 @@ class DataModuleTemporal(DataModule):
 
         return (self.train_dataloader ())
         
+class DataModuleModern(DataModule):
+    def __init__(
+        self,
+        dataset_path,
+        train_transform,
+        test_transform,
+        batch_size,
+        num_workers,
+        taille_val,
+        train_idx=None,
+        val_idx=None,
+    ):
+        
+        if train_idx is not None or val_idx is not None:
+            raise ValueError("train_idx and val_idx should not be provided for DataModuleModern.")
+        
+        print("Entrainement moderne")
+
+        self.sliding_window = False
+        self.full_dataset = Dataset(
+            dataset_path,
+            "train_val",
+            transforms=train_transform,
+            sorted=False,
+        )
+        print("Entrainement temporalisé")
+        idx_2023 = np.nonzero(np.array(self.full_dataset.year) == 2023)[0]
+        idx_2022 = np.nonzero(np.array(self.full_dataset.year) == 2022)[0]
+
+        indices = np.concatenate([idx_2022, idx_2023])
+        years = np.array(self.full_dataset.year)[indices]
+        val_size = int(taille_val * len(indices))
+
+        self.train_idx, self.val_idx = train_test_split(
+                indices,
+                test_size=val_size,
+                stratify=years
+            )
+
+        super().__init__(
+            dataset_path,
+            train_transform,
+            test_transform,
+            batch_size,
+            num_workers,
+            taille_val,
+            train_idx=train_idx,
+            val_idx=val_idx,
+            sorted_dataset=False,
+        )
 
 
 
