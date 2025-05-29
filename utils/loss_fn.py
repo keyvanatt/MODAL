@@ -75,6 +75,13 @@ class HuberLoss(nn.Module):
         loss = torch.where(abs_diff < self.delta,
                            0.5 * diff ** 2,
                            self.delta * (abs_diff - 0.5 * self.delta))
+        
+        """# Penalize the variance within the predictions
+        variance_penalty = 0.01 * torch.var(y_pred, dim=0, keepdim=True)
+        loss = loss + variance_penalty
+        # Add penalty when predictions are above 10
+        over_10_penalty = 0.005 * torch.clamp(y_pred - 10, min=0)
+        loss = loss + over_10_penalty"""
 
         if reduction == 'mean':
             return loss.mean()

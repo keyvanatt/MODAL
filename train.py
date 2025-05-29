@@ -117,14 +117,19 @@ def train(cfg, train_idx=None, val_idx=None):
     ##################
 
     
-    if False:
+    if True:
     #Uniquement si on souhaite restaurer un modèle qui était en entrainement    
-        checkpoint = torch.load('checkpoints/MIN_ATT&DAR_MULTIMODAL_2025-05-24_23-37-11.pt', weights_only=False)
+        checkpoint = torch.load('/Data/checkpoints/MIN_ATT&DAR_MULTIMODAL_2025-05-29_00-21-21.pt', weights_only=False)
         model.load_state_dict(checkpoint['model_state_dict'])
-        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        #optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
         epoch = checkpoint['epoch'] + 1  # Reprend à l'epoch suivante
-    
+    for param_group in optimizer.param_groups:
+        param_group['lr'] = 1e-6
+    # Print GPU info using nvidia-smi
+    print("nvidia-smi output:")
+    os.system("nvidia-smi")
+
     print ("*********")
     print ("Début training loop")
     print ("********")
@@ -144,7 +149,7 @@ def train(cfg, train_idx=None, val_idx=None):
         # Compte le nombre d'images entraînées pour faire la moyenne pour le train_loss
         num_samples_train = 0
         # Là c'est juste la barre de progression pour la console
-        pbar = tqdm(train_loader, desc=f"Epoch {epoch}", leave=False)
+        pbar = tqdm(val_loader, desc=f"Epoch {epoch}", leave=False)
         for i, batch in enumerate(pbar):
             # On envoie les images dans le GPU (si dispo)
             batch["image"] = batch["image"].to(device)

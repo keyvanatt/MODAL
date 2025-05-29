@@ -2,5 +2,5 @@ defaults:
     - val_transform: simple
     - train_transform: simple
 
-batch_size: 128
+batch_size: 64
 num_workers: 8
