@@ -11,3 +11,4 @@ torch
 torchvision
 accelerate
 bitsandbytes
+open-clip-torch
