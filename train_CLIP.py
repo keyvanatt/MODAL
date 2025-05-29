@@ -34,11 +34,21 @@ def train(cfg, train_idx=None, val_idx=None):
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+    ###############################
+    ##### Nombre min de vues ######
+    ###############################
+    # ATTENTION : pour les trop grands nombres (a partir de 13??) ca bug et je ne 
+    # sais pas trop pourquoi (pas assez de données ?)
+
+    min_views = 12
+
     # Charger CLIP et son préprocessing
     clip_model, _, clip_preprocess = create_model_and_transforms('ViT-B-32', pretrained='laion2b_s34b_b79k')
 
+    # Entrainer le modèle sur un subset e données avec un minimum de views
+
     # Créer les datasets et dataloaders
-    full_dataset = DatasetCLIP(cfg.datamodule.dataset_path, "train_val", transforms=clip_preprocess)
+    full_dataset = DatasetCLIP(cfg.datamodule.dataset_path, "train_val", transforms=clip_preprocess, min_views=min_views)
     indices = np.arange(len(full_dataset))
     years = np.array(full_dataset.year) 
     train_idx, val_idx = train_test_split(
@@ -51,12 +61,14 @@ def train(cfg, train_idx=None, val_idx=None):
         "train_val",
         transforms=clip_preprocess,
         indices=train_idx,
+        min_views=min_views
     )
     val_set = DatasetCLIP(
         cfg.datamodule.dataset_path,
         "train_val",
         transforms=clip_preprocess,
         indices=val_idx,
+        min_views=min_views
     )
 
     train_loader = DataLoader(train_set, batch_size=cfg.datamodule.batch_size, shuffle=True, num_workers=cfg.datamodule.num_workers, collate_fn=collate_fn_clip)

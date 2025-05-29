@@ -4,7 +4,7 @@ from PIL import Image
 import numpy as np
 
 class DatasetCLIP(torch.utils.data.Dataset):
-    def __init__(self, dataset_path, split, transforms, sorted=False, indices=None):
+    def __init__(self, dataset_path, split, transforms, sorted=False, indices=None, min_views=None):
         self.dataset_path = dataset_path
         self.split = split
 
@@ -13,14 +13,28 @@ class DatasetCLIP(torch.utils.data.Dataset):
         info = pd.read_csv(f"{dataset_path}/{split}.csv")
         info["description"] = info["description"].fillna("")
 
+        
+        # Filtrage sur le nombre de vues
+        if min_views is not None:
+            if "log1p_views" in info.columns:
+                info = info[info["log1p_views"] >= min_views]
+            if "views" in info.columns:
+                info = info[info["views"] >= min_views]
+        print(f"Nombre d'exemples après filtrage min_views={min_views} : {len(info)}")
+
+        # Filtrage par indices (après le filtrage min_views)
         if indices is not None:
             info = info.iloc[indices]
             self.indices = indices
         else:
             self.indices = np.arange(info.shape[0])
 
-        if "views" in info.columns:
+        # TOUS les attributs sont définis à partir de info filtré
+        # Je pète un cable
+        if "log1p_views" in info.columns:
             self.targets = info["log1p_views"].values
+        elif "views" in info.columns:
+            self.targets = np.log1p(info["views"].values)
         if "category" in info.columns:
             self.class_targets = info["category"].values
 
@@ -35,23 +49,6 @@ class DatasetCLIP(torch.utils.data.Dataset):
         self.nb_mots = info["nb_mots"].values if "nb_mots" in info.columns else np.zeros(len(self.ids))
 
         self.transforms = transforms
-
-        # Tri optionnel
-        if sorted:
-            sorted_indices = self.year.argsort()
-            self.ids = self.ids[sorted_indices]
-            self.description = self.description[sorted_indices]
-            if self.title is not None:
-                self.title = self.title[sorted_indices]
-            self.channel = self.channel[sorted_indices]
-            self.year = self.year[sorted_indices]
-            self.http_count = self.http_count[sorted_indices]
-            self.diese = self.diese[sorted_indices]
-            self.nb_mots = self.nb_mots[sorted_indices]
-            if hasattr(self, "targets"):
-                self.targets = self.targets[sorted_indices]
-            if hasattr(self, "class_targets"):
-                self.class_targets = self.class_targets[sorted_indices]
 
     def __len__(self):
         return len(self.ids)
