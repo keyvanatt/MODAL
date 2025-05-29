@@ -40,7 +40,7 @@ def train(cfg, train_idx=None, val_idx=None):
     # ATTENTION : pour les trop grands nombres (a partir de 13??) ca bug et je ne 
     # sais pas trop pourquoi (pas assez de données ?)
 
-    min_views = 12
+    min_views = 6
 
     # Charger CLIP et son préprocessing
     clip_model, _, clip_preprocess = create_model_and_transforms('ViT-B-32', pretrained='laion2b_s34b_b79k')
