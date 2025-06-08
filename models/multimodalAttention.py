@@ -101,6 +101,7 @@ class MultiModalAttention(nn.Module):
         image_tokens = add_positional_encoding(image_tokens)
         attn_output_txt, _ = self.cross_attn(query=text_tokens, key=image_tokens, value=image_tokens)
         attn_output_img, _ = self.cross_attn(query=image_tokens, key=text_tokens, value=text_tokens)
+        attn_output_txt = text_tokens
         # Concaténation sur la dimension des features (embed_dim)
         attn_output_txt_pooled = attn_output_txt.mean(dim=1)  # (batch, embed_dim)
         attn_output_img_pooled = attn_output_img.mean(dim=1)
@@ -117,6 +118,17 @@ class MultiModalAttention(nn.Module):
         channel_feat = self.channel_embedding(channel.squeeze(1))  # [B, dim]
         year = year.float()
         year_feat = (year - self.min_year) / (self.max_year - self.min_year)
+        year = year.float()
+        year_feat = torch.zeros_like(year)
+        """year = year.float()
+        channel_feat = channel_feat.float()
+        nb_liens = nb_liens.float()
+        nb_diese = nb_diese.float()
+        nb_mots = nb_mots.float()
+        channel_feat = torch.zeros_like(channel_feat)
+        nb_liens = torch.zeros_like(nb_liens)
+        nb_diese = torch.zeros_like(nb_diese)
+        nb_mots = torch.zeros_like(nb_mots)"""
         x = torch.cat([x, channel_feat, year_feat, x2, nb_liens, nb_mots, nb_diese], dim=1)
         x = self.reg_head(x)  # (batch, 1)
         x = self.activation(x)
