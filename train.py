@@ -116,7 +116,7 @@ def train(cfg, train_idx=None, val_idx=None):
     ##################
 
     
-    if True:
+    if False:
     #Uniquement si on souhaite restaurer un modèle qui était en entrainement    
         checkpoint = torch.load('/Data/checkpoints/MIN_ATT&DAR_MULTIMODAL_2025-05-29_11-07-26.pt', weights_only=False)
         model.load_state_dict(checkpoint['model_state_dict'])
@@ -322,7 +322,7 @@ def train(cfg, train_idx=None, val_idx=None):
                 'scheduler_state_dict': scheduler.state_dict(),
                 'val_loss': epoch_val_loss,
             }
-            torch.save(checkpoint, cfg.checkpoint_path)
+            #torch.save(checkpoint, cfg.checkpoint_path)
             print ("Modèle enregistré !")
 
         if (epoch_val_loss <= val_loss_min) :    
@@ -335,11 +335,11 @@ def train(cfg, train_idx=None, val_idx=None):
                 'scheduler_state_dict': scheduler.state_dict(),
                 'val_loss': epoch_val_loss,
             }
-            torch.save(checkpoint, cfg.min_checkpoint_path)
+            #torch.save(checkpoint, cfg.min_checkpoint_path)
             print ("Modèle optimal enregistré !")
 
 
-        # Si le modèle est pire que le meilleur, on repart avec le précédent
+        """ # Si le modèle est pire que le meilleur, on repart avec le précédent
         if (epoch != 0 and val_loss_min < epoch_val_loss * (1 - cfg.aberration_val_loss)):
             print ("Aberration de la val_loss")
             checkpoint = torch.load(cfg.min_checkpoint_path, weights_only=False)
@@ -347,7 +347,7 @@ def train(cfg, train_idx=None, val_idx=None):
             optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
             for param_group in optimizer.param_groups:
                 param_group['lr'] *= cfg.factor_learning_rate
-        
+        """
 
         ################################
         # Conditions de sortie de loop #

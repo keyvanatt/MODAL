@@ -127,6 +127,17 @@ class MultiModalAttention(nn.Module):
         channel_feat = self.channel_embedding(channel.squeeze(1))  # [B, dim]
         year = year.float()
         year_feat = (year - self.min_year) / (self.max_year - self.min_year)
+        year = year.float()
+        year_feat = torch.zeros_like(year)
+        """year = year.float()
+        channel_feat = channel_feat.float()
+        nb_liens = nb_liens.float()
+        nb_diese = nb_diese.float()
+        nb_mots = nb_mots.float()
+        channel_feat = torch.zeros_like(channel_feat)
+        nb_liens = torch.zeros_like(nb_liens)
+        nb_diese = torch.zeros_like(nb_diese)
+        nb_mots = torch.zeros_like(nb_mots)"""
         x = torch.cat([x, channel_feat, year_feat, x2, nb_liens, nb_mots, nb_diese], dim=1)
         x = self.reg_head(x)  # (batch, 1)
         x = self.activation(x)
