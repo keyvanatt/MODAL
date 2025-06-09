@@ -63,7 +63,7 @@ class MultiModalAttention(nn.Module):
         assert self.image_embedding_dim == self.text_embedding_dim, "Image and text embedding dimensions must match."
         
 
-    def forward(self, x):
+    def forward(self, x, return_attention=False):
 
         image_tensor = x["image"]
         title_texts = x["title"]
@@ -99,15 +99,25 @@ class MultiModalAttention(nn.Module):
 
         text_tokens = add_positional_encoding(text_tokens)
         image_tokens = add_positional_encoding(image_tokens)
-        attn_output_txt, _ = self.cross_attn(query=text_tokens, key=image_tokens, value=image_tokens)
-        attn_output_img, _ = self.cross_attn(query=image_tokens, key=text_tokens, value=text_tokens)
+        print("Shape of text tokens: ", text_tokens.shape)
+        print("Shape of image tokens: ", image_tokens.shape)
+
+
+
+        
+        attn_output_txt, attn_weights_txt = self.cross_attn(query=text_tokens, key=image_tokens, value=image_tokens)
+        attn_output_img, attn_weights_img = self.cross_attn(query=image_tokens, key=text_tokens, value=text_tokens)
+        
+        text_tokens += attn_output_txt  # (batch, seq_len_text, embed_dim)
+        image_tokens += attn_output_img  # (batch, seq_len_img, embed_dim)
+        
         # Concaténation sur la dimension des features (embed_dim)
-        attn_output_txt_pooled = attn_output_txt.mean(dim=1)  # (batch, embed_dim)
-        attn_output_img_pooled = attn_output_img.mean(dim=1)
+        text_tokens = text_tokens.mean(dim=1)  # (batch, embed_dim)
+        image_tokens = image_tokens.mean(dim=1)
         
         desc_tokens_pooled = desc_tokens.mean(dim=1)  # (batch, embed_dim)
 
-        attn_output = torch.cat([attn_output_txt_pooled, attn_output_img_pooled], dim=1)  # (batch, 2 * embed_dim)
+        attn_output = torch.cat([text_tokens, image_tokens], dim=1)  # (batch, 2 * embed_dim)
         #x = attn_output.transpose(1, 2)  # (batch, embed_dim, seq_len_text)
         #x = self.pool(x).squeeze(-1)  # (batch, embed_dim)
         
@@ -120,13 +130,18 @@ class MultiModalAttention(nn.Module):
         x = torch.cat([x, channel_feat, year_feat, x2, nb_liens, nb_mots, nb_diese], dim=1)
         x = self.reg_head(x)  # (batch, 1)
         x = self.activation(x)
+        if return_attention:
+            return x, attn_weights_txt, attn_weights_img
         return x
 
 class MultiModalAttentionRegressor(MultiModalAttention):
     def __init__(self, text_model_name='distilbert-base-multilingual-cased', freeze_dino=True):
         super().__init__(text_model_name=text_model_name, freeze_dino=freeze_dino)
         self.reg_head = nn.Sequential(
-            nn.Linear(self.reg_input_dim, 1),
+            nn.Linear(self.reg_input_dim, self.reg_input_dim // 2),
+            nn.Dropout(self.droupout),
+            nn.ReLU(),
+            nn.Linear(self.reg_input_dim // 2, 1),
             nn.Dropout(self.droupout),
         )
         self.activation = lambda x : torch.nn.functional.sigmoid(x)*20

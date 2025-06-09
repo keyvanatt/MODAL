@@ -21,7 +21,7 @@ def test_model (cfg) :
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     model = MultiModalAttentionRegressor()
-    regressor = torch.load("/Data/checkpoints/MIN_ATT&DAR_MULTIMODAL_2025-05-29_00-47-17.pt",weights_only=False)["model_state_dict"]
+    regressor = torch.load("/Data/checkpoints/MIN_ATT&DAR_MULTIMODAL_2025-05-29_19-28-20.pt",weights_only=False)["model_state_dict"]
     model.load_state_dict(regressor, strict=False)
     model.to(device)
 
